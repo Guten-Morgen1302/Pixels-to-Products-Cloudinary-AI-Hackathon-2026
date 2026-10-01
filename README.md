@@ -43,7 +43,7 @@ Upload one phone photo. Cloudinary cuts out your **real** product, places it on 
 - **Cloudinary Node SDK v2**, plus the **Image Generation API** (`/v2/generate`)
 - **sharp** for three small server checks: cutout coverage, Pixel-Lock core erosion, alignment and the Amazon white check
 - **JSZip** for the client-side "Download all"
-- **Vitest**: 64 tests. The network is blocked in tests, so no test can spend credits.
+- **Vitest**: 68 tests. The network is blocked in tests, so no test can spend credits.
 - Fonts: Bricolage Grotesque, Instrument Sans, JetBrains Mono (`next/font`, OFL)
 
 ## 5. Cloudinary integration (feature map)

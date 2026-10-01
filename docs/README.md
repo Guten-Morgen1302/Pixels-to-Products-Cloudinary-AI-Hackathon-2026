@@ -22,5 +22,5 @@ Read in this order.
 - Waiting on:
   - `.env.local` with Cloudinary credentials, so the free-tier checks can run.
   - Per-model credit costs, read from the Console.
-- Build: **v1 + phase 2 code complete** (64 tests, production build OK). Live setup is blocked on a valid Cloudinary API secret.
+- Build: **v1 + phase 2 code complete** (68 tests, production build OK), live setup done, demo video recorded and published.
 - Deadline: submit by **Oct 3, 20:00 IST** (code freeze Oct 4, 00:15).
