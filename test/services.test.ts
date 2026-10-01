@@ -105,7 +105,7 @@ describe("stages", () => {
 describe("generation", () => {
   it("mock fan-out never calls /v2/generate and returns library stages after the delay", async () => {
     const c = fakeCloud([libStage]);
-    const r = await startStages(c, cfg, "teak shelf, morning light", "v");
+    const r = await startStages(c, cfg, "teak shelf, morning light", "flux-2-klein-9b", "v");
     expect(r.tasks).toHaveLength(3);
     expect(c.generated).toHaveLength(0);
     expect(await pollStage(c, cfg, SID, r.tasks[0].taskId, r.prompt)).toEqual({ status: "pending" });
@@ -114,10 +114,25 @@ describe("generation", () => {
     expect(done.stage?.name).toBe("Teak Shelf (mock)");
   });
 
+  it("premium model = 1 image, its real price reserved (nano-banana-1 = 4 credits)", async () => {
+    const c = fakeCloud();
+    const r = await startStages(c, live, "teak shelf", "nano-banana-1", "v");
+    expect(r.tasks).toHaveLength(1);
+    expect([...c.raw].filter((k) => k.startsWith("realstage/ledger/prod-"))).toHaveLength(4);
+  });
+
+  it("unknown model is rejected before any spend", async () => {
+    const c = fakeCloud();
+    await expect(startStages(c, live, "teak shelf", "gpt-image-2", "v")).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(c.raw.size).toBe(0);
+  });
+
   it("live fan-out reserves 3 credits up front and sends the documented body", async () => {
     const c = fakeCloud();
-    await startStages(c, live, "teak shelf", "v");
+    await startStages(c, live, "teak shelf", "flux-2-klein-9b", "v");
     expect([...c.raw].filter((k) => k.startsWith("realstage/ledger/prod-"))).toHaveLength(3);
+    const seeds = c.generated.map((g) => (g.body as any).seed);
+    expect(new Set(seeds).size).toBe(3); // 3 distinct seeds = 3 variations
     expect(c.generated).toHaveLength(3);
     expect(c.generated[0]).toMatchObject({ kind: "text_to_image", body: { async: true, image_size: { aspect_ratio: "1:1", resolution: "1K" }, target: { upload_preset: "realstage_gen" } } });
   });
@@ -215,7 +230,7 @@ describe("review fixes (regressions)", () => {
     const c = fakeCloud();
     let n = 0;
     c.generate = async () => { if (++n === 2) throw new Error("network"); return { status: "pending", taskId: `t${n}` }; };
-    const r = await startStages(c, live, "teak shelf", "v");
+    const r = await startStages(c, live, "teak shelf", "flux-2-klein-9b", "v");
     expect(r.tasks.map((t) => Boolean(t.taskId))).toEqual([true, false, true]);
     expect(r.tasks[1].error).toBe("GEN_FAILED");
   });

@@ -1,13 +1,23 @@
 // Single table for generation models, scenes and budget numbers (plan: X1, Budget Lock, DESIGN.md art direction).
-// Credit costs are verified from the first real generation response (limits.addons_quota.used_by_request).
+// Credit costs VERIFIED on 2026-10-01 from limits.addons_quota.used_by_request at 1K:
+//   flux-2-klein-9b = 1, nano-banana-1 = 4, recraft-v3 = 4.
 
-export type StageModel = { id: string; family: string; seed: boolean; credits: number };
+export type StageModel = { id: string; family: string; label: string; seed: boolean; credits: number };
 
 export const STAGE_MODELS: StageModel[] = [
-  { id: "flux-2-klein-9b", family: "flux", seed: true, credits: 1 },
-  { id: "nano-banana-1", family: "nano-banana", seed: true, credits: 1 },
-  { id: "recraft-v3", family: "recraft", seed: false, credits: 1 },
+  { id: "flux-2-klein-9b", family: "flux", label: "Flux", seed: true, credits: 1 },
+  { id: "nano-banana-1", family: "nano-banana", label: "Nano Banana", seed: true, credits: 4 },
+  { id: "recraft-v3", family: "recraft", label: "Recraft", seed: false, credits: 4 },
 ];
+
+// Live generation = Track 2's "variations and model choice": the visitor picks a model and sees its real price.
+// Cheap Flux gives 3 seeded variations; the premium models give 1 image each.
+export type GenOption = { modelId: string; label: string; count: number; credits: number };
+export const GEN_OPTIONS: GenOption[] = STAGE_MODELS.map((m) => {
+  const count = m.credits <= 1 ? 3 : 1;
+  return { modelId: m.id, label: m.label, count, credits: count * m.credits };
+});
+export const DEFAULT_GEN_OPTION = GEN_OPTIONS[0].modelId;
 
 export const EDIT_MODEL = { id: "flux-2-klein-9b-edit", seed: true, credits: 1 };
 export const EDIT_MODEL_FALLBACK = { id: "nano-banana-1-edit", seed: true, credits: 1 };

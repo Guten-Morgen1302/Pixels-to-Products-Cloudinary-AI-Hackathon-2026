@@ -23,6 +23,8 @@ const port = createCloud(cfg);
 const GENERATE = process.argv.includes("--generate");
 const LIB_SCENES = Number(process.env.LIB_SCENES ?? 4);
 const LIB_CREDIT_CAP = 20;
+// Restrict which model families build the library, e.g. LIB_MODELS=flux (1 credit each). Default: all.
+const LIB_MODELS = (process.env.LIB_MODELS ?? "").split(",").map((s) => s.trim()).filter(Boolean);
 
 // Default samples: Cloudinary's public demo e-commerce photos. Replace with your own phone shots via
 // SAMPLES="Steel tumbler|https://...,Saree|https://...,Pickle jar|https://..." for the final demo.
@@ -46,7 +48,7 @@ async function uploadPreset() {
     await cloudinary.api.create_upload_preset({ name: GEN_PRESET, ...opts });
     say(`✓ upload preset ${GEN_PRESET} created`);
   } catch (e: any) {
-    if (/exist/i.test(e?.error?.message ?? e?.message ?? "")) {
+    if (/exist|taken/i.test(e?.error?.message ?? e?.message ?? "")) {
       await cloudinary.api.update_upload_preset(GEN_PRESET, opts);
       say(`✓ upload preset ${GEN_PRESET} updated`);
     } else throw e;
@@ -89,7 +91,7 @@ async function library() {
   let spent = 0;
   let remaining = await readQuota(port);
   for (const scene of SCENES.slice(0, LIB_SCENES)) {
-    for (const m of STAGE_MODELS) {
+    for (const m of STAGE_MODELS.filter((x) => !LIB_MODELS.length || LIB_MODELS.includes(x.family))) {
       const id = `realstage/lib/${scene.key}-${m.family}`;
       if (await port.getResource(id)) {
         say(`· ${id} exists, skipped (0 credits)`);

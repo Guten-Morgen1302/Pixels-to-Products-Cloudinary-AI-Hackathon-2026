@@ -108,6 +108,8 @@ img { display: block; max-width: 100%; }
 
 .gen { display: flex; gap: 12px; margin-top: 20px; align-items: flex-end; }
 .gen label { flex: 1; font-size: 14px; font-weight: 600; display: flex; flex-direction: column; gap: 6px; }
+.gen .model-pick { flex: 0 0 auto; }
+.gen select { min-height: 44px; border: 1.5px solid var(--ink-2); border-radius: var(--r-ctl); padding: 0 10px; font: 400 15px var(--font-ui), sans-serif; color: var(--ink); background: #fff; }
 .gen input { min-height: 44px; border: 1.5px solid var(--ink-2); border-radius: var(--r-ctl); padding: 0 12px; font: 400 16px var(--font-ui), sans-serif; color: var(--ink); }
 
 .side .you { display: flex; gap: 10px; align-items: center; margin-bottom: 28px; }

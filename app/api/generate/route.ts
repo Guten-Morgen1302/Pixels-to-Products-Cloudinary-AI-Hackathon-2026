@@ -6,7 +6,7 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 type Req =
-  | { action: "stages"; prompt: string }
+  | { action: "stages"; prompt: string; model: string }
   | { action: "poll-stage"; taskId: string; prompt: string }
   | { action: "relight"; input: RelightInput }
   | { action: "poll-relight"; taskId: string; compositeId: string; input: RelightInput };
@@ -16,7 +16,7 @@ export async function POST(req: Request) {
     const b = await body<Req>(req);
     switch (b?.action) {
       case "stages":
-        return await startStages(port, cfg, b.prompt, visitor);
+        return await startStages(port, cfg, b.prompt, b.model, visitor);
       case "poll-stage":
         return await pollStage(port, cfg, sid, String(b.taskId ?? ""), String(b.prompt ?? ""));
       case "relight":

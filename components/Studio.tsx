@@ -15,7 +15,7 @@ import ExportKit, { type KitState } from "./ExportKit";
 import Landing, { type Sample } from "./Landing";
 import type { StageInfo } from "@/lib/services/stages";
 import { comparePair, compositePreviewUrl, deliveryUrl, slugify, type CutRef, type KitFile } from "@/lib/urls";
-import { BUDGET } from "@/lib/models";
+import { BUDGET, DEFAULT_GEN_OPTION, GEN_OPTIONS } from "@/lib/models";
 
 type Ai = { on: boolean; creditsLeft: number; reason?: string; mock: boolean };
 type AppState = { cloud: string; stages: StageInfo[]; sessionStages: StageInfo[]; ai: Ai; samples: Sample[]; uploadsOn: boolean };
@@ -44,6 +44,7 @@ export default function Studio() {
   const [relights, setRelights] = useState<Record<string, Relight>>({});
   const [gen, setGen] = useState<{ prompt: string; cards: GenCard[] } | null>(null);
   const [prompt, setPrompt] = useState("");
+  const [genModel, setGenModel] = useState(DEFAULT_GEN_OPTION);
   const [genError, setGenError] = useState<string | null>(null);
   const [compare, setCompare] = useState(false);
   const [kit, setKit] = useState<KitState>({ status: "idle" });
@@ -191,7 +192,7 @@ export default function Studio() {
     setGenError(null);
     const mySeq = seq.current;
     try {
-      const start = await api<{ prompt: string; tasks: { model: string; taskId: string; error?: string }[] }>("/api/generate", { action: "stages", prompt });
+      const start = await api<{ prompt: string; tasks: { model: string; taskId: string; error?: string }[] }>("/api/generate", { action: "stages", prompt, model: genModel });
       const cards: GenCard[] = start.tasks.map((t) => ({ model: t.model, status: t.error ? "error" : "pending", message: t.error ? "This model didn't respond." : undefined }));
       if (mySeq !== seq.current) return;
       setGen({ prompt: start.prompt, cards });
@@ -315,7 +316,9 @@ export default function Studio() {
   const cloud = app.cloud;
   const heroSrc = selected ? (relitFinal ? deliveryUrl(cloud, relitFinal, ["c_scale,w_1024", "f_auto,q_auto"]) : compositePreviewUrl(cloud, selected, product.cut)) : null;
   const aiOn = !!ai?.on;
-  const canFanOut = aiOn && (ai?.mock || (ai?.creditsLeft ?? 0) >= 3);
+  const genOpt = GEN_OPTIONS.find((o) => o.modelId === genModel) ?? GEN_OPTIONS[0];
+  const canFanOut = aiOn && (ai?.mock || (ai?.creditsLeft ?? 0) >= genOpt.credits);
+  const genWhat = (o: { count: number }) => (o.count > 1 ? o.count + " variations" : "1 image");
   const pausedMsg = "Live AI paused to save credits. Library stages still work.";
   const generating = genStarting || !!gen?.cards.some((c) => c.status === "pending");
   // One list drives both rendering and keyboard navigation (cards while generating, otherwise the strip).
@@ -327,7 +330,7 @@ export default function Studio() {
 
   const previews = selected
     ? [
-        { key: "amazon" as const, label: "Amazon main · white", size: "2000×2000", social: false, preview: deliveryUrl(cloud, product.cut.publicId, ["c_pad,w_1700,h_1700,b_white", "c_pad,w_2000,h_2000,b_white", "c_scale,w_88", "f_auto,q_auto"]) },
+        { key: "amazon" as const, label: "Amazon main · white", size: "2000×2000", social: false, preview: deliveryUrl(cloud, product.cut.publicId, ["c_pad,w_1700,h_1700,b_white", "c_mpad,w_2000,h_2000,b_white", "c_scale,w_88", "f_auto,q_auto"]) },
         ...([["instagram", "Instagram post", "1080×1350"], ["story", "Story / Reel cover", "1080×1920"], ["whatsapp", "WhatsApp / Meesho", "1080×1080"]] as const).map(([key, label, size]) => ({
           key, label, size, social: selected.w < 2000,
           preview: relitFinal ? deliveryUrl(cloud, relitFinal, ["c_fill,w_88,h_88", "f_auto,q_auto"]) : compositePreviewUrl(cloud, selected, product.cut, 88),
@@ -421,13 +424,24 @@ export default function Studio() {
             <button className="link" onClick={() => setPage((p) => p + 1)}>More stages</button>
           )}
 
+          {/* Track 2: variations + model choice, with the real credit price of each model on screen. */}
           <form className="gen" onSubmit={onGenerate}>
             <label>
               Describe a new stage
               <input value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="e.g. brass thali table, festive evening" maxLength={200} />
             </label>
+            <label className="model-pick">
+              Model
+              <select value={genModel} onChange={(e) => setGenModel(e.target.value)} disabled={generating}>
+                {GEN_OPTIONS.map((o) => (
+                  <option key={o.modelId} value={o.modelId}>
+                    {o.label} · {genWhat(o)} · {o.credits} credit{o.credits > 1 ? "s" : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
             <button className="btn" type="submit" disabled={generating || !canFanOut || prompt.trim().length < 3} title={canFanOut ? undefined : pausedMsg}>
-              {generating ? "Generating…" : "Generate 3 new stages · uses 3"}
+              {generating ? "Generating…" : "Generate " + genWhat(genOpt) + " · uses " + genOpt.credits}
             </button>
           </form>
           {genError && <p className="error" role="alert">{genError}</p>}

@@ -43,7 +43,7 @@ describe("kit", () => {
 
   it("Amazon pads to 85% then 2000 white, from the cutout", () => {
     expect(files[0].download).toBe(
-      "https://res.cloudinary.com/c/image/upload/c_pad,w_1700,h_1700,b_white/c_pad,w_2000,h_2000,b_white/f_jpg,q_95/fl_attachment:realstage-steel-tumbler-amazon-2000/realstage/u/abc/p1_cut",
+      "https://res.cloudinary.com/c/image/upload/c_pad,w_1700,h_1700,b_white/c_mpad,w_2000,h_2000,b_white/f_jpg,q_95/fl_attachment:realstage-steel-tumbler-amazon-2000/realstage/u/abc/p1_cut",
     );
   });
 

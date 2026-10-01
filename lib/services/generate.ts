@@ -6,7 +6,7 @@ import type { Config } from "../config";
 import { recordQuota, reserveGeneration, settleCost } from "../budget";
 import { placeProduct } from "../geometry";
 import { alignmentScore } from "../image-checks";
-import { ALIGN_THRESHOLD, DEFAULT_GEOMETRY, EDIT_MODEL, STAGE_MODELS, STAGE_RESOLUTION, stagePrompt } from "../models";
+import { ALIGN_THRESHOLD, DEFAULT_GEOMETRY, EDIT_MODEL, GEN_OPTIONS, STAGE_MODELS, STAGE_RESOLUTION, stagePrompt } from "../models";
 import { expTag, ownsAsset, sessionFolder } from "../session";
 import { compositeSourceUrl, deliveryUrl, pixelLockSourceUrl, type CutRef, type StageRef } from "../urls";
 import { AppError, MESSAGES } from "./errors";
@@ -32,25 +32,29 @@ const nameFromPrompt = (p: string) => p.split(/[,.]/)[0].split(" ").slice(0, 3).
 
 // ---- stages fan-out ---------------------------------------------------------------------------
 
-export async function startStages(port: CloudPort, cfg: Config, rawPrompt: unknown, visitor: string) {
+export async function startStages(port: CloudPort, cfg: Config, rawPrompt: unknown, rawModel: unknown, visitor: string) {
   const prompt = cleanPrompt(rawPrompt);
-  const credits = STAGE_MODELS.reduce((s, m) => s + m.credits, 0);
-  const r = await reserveGeneration(port, cfg, credits, visitor); // all 3 reserved before the first call (R2-3)
+  const option = GEN_OPTIONS.find((o) => o.modelId === rawModel);
+  if (!option) throw new AppError("BAD_REQUEST", MESSAGES.BAD_REQUEST);
+  const m = STAGE_MODELS.find((x) => x.id === option.modelId)!;
+  const r = await reserveGeneration(port, cfg, option.credits, visitor); // whole set reserved before the first call (R2-3)
   if (!r.ok) throw new AppError("BUDGET_PAUSED", MESSAGES.BUDGET_PAUSED, 503);
 
+  const slots = Array.from({ length: option.count }, (_, i) => i);
   if (cfg.genMode === "mock") {
     const t = Date.now();
-    return { prompt, tasks: STAGE_MODELS.map((m, i) => ({ model: m.id, taskId: `mock:stage:${i}:${t}`, error: undefined as string | undefined })) };
+    return { prompt, model: m.id, tasks: slots.map((i) => ({ model: m.id, taskId: `mock:stage:${i}:${t}`, error: undefined as string | undefined })) };
   }
+  const base = randomInt(1, 2_000_000);
   const tasks = await Promise.all(
-    STAGE_MODELS.map(async (m) => {
+    slots.map(async (i) => {
       // One model failing (even a network throw) must not lose the other two tasks.
       try {
       const res = await port.generate("text_to_image", {
         prompt: stagePrompt(prompt),
         model: { id: m.id },
         image_size: { aspect_ratio: "1:1", resolution: STAGE_RESOLUTION },
-        ...(m.seed ? { seed: randomInt(1, 2_000_000) } : {}),
+        ...(m.seed ? { seed: base + i * 7919 } : {}), // distinct seeds = variations
         async: true,
         target: { target_type: "managed_asset", upload_preset: GEN_PRESET },
       });
@@ -62,7 +66,7 @@ export async function startStages(port: CloudPort, cfg: Config, rawPrompt: unkno
       }
     }),
   );
-  return { prompt, tasks };
+  return { prompt, model: m.id, tasks };
 }
 
 export async function pollStage(port: CloudPort, cfg: Config, sessionId: string, taskId: string, prompt: string): Promise<{ status: "pending" | "done"; stage?: StageInfo }> {
@@ -72,7 +76,7 @@ export async function pollStage(port: CloudPort, cfg: Config, sessionId: string,
     const { stages } = await libraryStages(port);
     if (!stages.length) throw new AppError("GEN_FAILED", "No library stages yet. Run npm run setup:generate.", 503);
     const base = stages[Number(idx) % stages.length];
-    return { status: "done", stage: { ...base, name: `${nameFromPrompt(prompt)} (mock)`, model: STAGE_MODELS[Number(idx)]?.id ?? base.model, library: false } };
+    return { status: "done", stage: { ...base, name: `${nameFromPrompt(prompt)} (mock)`, library: false } };
   }
   if (cfg.genMode === "mock") throw new AppError("BAD_REQUEST", MESSAGES.BAD_REQUEST);
   const res = await port.task(taskId);

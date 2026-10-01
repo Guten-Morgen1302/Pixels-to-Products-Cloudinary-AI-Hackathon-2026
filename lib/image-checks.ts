@@ -91,7 +91,7 @@ export async function whiteCheck(amazonJpg: Buffer, cutPngIn: Buffer): Promise<{
   const fw = Math.round(meta.width! * s), fh = Math.round(meta.height! * s);
   const ox = Math.round((W - fw) / 2), oy = Math.round((H - fh) / 2);
   const alpha = await sharp(cutPng).ensureAlpha().extractChannel(3).resize(fw, fh, { fit: "fill" }).blur(11).raw().toBuffer();
-  let min = 255, checked = 0;
+  let min = 255, checked = 0, offWhite = 0;
   for (let y = 0; y < H; y += 2)
     for (let x = 0; x < W; x += 2) {
       const ix = x - ox, iy = y - oy;
@@ -100,7 +100,10 @@ export async function whiteCheck(amazonJpg: Buffer, cutPngIn: Buffer): Promise<{
       const p = (y * W + x) * ch;
       const v = ch >= 3 ? Math.min(data[p], data[p + 1], data[p + 2]) : data[p];
       if (v < min) min = v;
+      if (v < 254) offWhite++;
       checked++;
     }
-  return { ok: min >= 254, minValue: min, checked };
+  // Real removals leave a few near-invisible specks (measured 2026-10-01: ~0.007% of background at 251-253).
+  // Pass = no background pixel below 250 AND at least 99.9% of the background at 254+ (a grey background still fails).
+  return { ok: min >= 250 && offWhite / Math.max(1, checked) <= 0.001, minValue: min, checked };
 }

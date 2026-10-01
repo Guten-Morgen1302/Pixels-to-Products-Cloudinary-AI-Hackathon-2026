@@ -95,7 +95,8 @@ export function kitFiles(cloud: string, final: { publicId: string; w: number; h:
     return [`c_fill,w_${w},h_${h},e_blur:1500`, `l_${fin},c_limit,w_${w},h_${h}`, "fl_layer_apply,g_center"];
   };
 
-  const amazon = ["c_pad,w_1700,h_1700,b_white", "c_pad,w_2000,h_2000,b_white", "f_jpg,q_95"];
+  // c_pad fits the product inside 1700² (85%); c_mpad then pads to 2000² WITHOUT scaling back up (c_pad would).
+  const amazon = ["c_pad,w_1700,h_1700,b_white", "c_mpad,w_2000,h_2000,b_white", "f_jpg,q_95"];
   const files: Array<[KitFile["key"], string, string, boolean, string, string[]]> = [
     ["amazon", "Amazon main · white", "2000×2000", false, cutId, amazon],
     ["instagram", "Instagram post", "1080×1350", !twoK, final.publicId, [...social(1080, 1350), "f_jpg,q_90"]],
