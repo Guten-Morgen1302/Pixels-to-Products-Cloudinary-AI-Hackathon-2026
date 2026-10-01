@@ -13,7 +13,8 @@ Read in this order.
 | 7 | [reviews/](reviews/) | Verbatim Codex (gpt-5.6-terra) reviews, round 1 engineering + design and rounds 2–4 verification |
 | 8 | [designs/realstage.md.review.bCuixX/](designs/realstage.md.review.bCuixX/) | Spec-review rounds 1–2 from office hours (raw JSON verdicts) |
 | 9 | [../TODOS.md](../TODOS.md) | Deferred work, with the items completed during review |
-| 10 | [../scripts/free-tier-checks.mjs](../scripts/free-tier-checks.mjs) | Free-tier gate script: checks 2–6, 0 AI credits. Needs `.env.local` (see [../.env.example](../.env.example)) |
+| 10 | [demo-script.md](demo-script.md) | 3-minute demo video script and checklist |
+| 11 | [../scripts/free-tier-checks.mjs](../scripts/free-tier-checks.mjs) | Free-tier gate script: checks 2–6, 0 AI credits. Needs `.env.local` (see [../.env.example](../.env.example)) |
 | — | `free-tier-checks.md` | Created here after the checks run |
 
 ## Status (2026-10-01)
@@ -21,5 +22,5 @@ Read in this order.
 - Waiting on:
   - `.env.local` with Cloudinary credentials, so the free-tier checks can run.
   - Per-model credit costs, read from the Console.
-- Build: **not started** (on hold until you say go).
+- Build: **v1 + phase 2 code complete** (52 tests, production build OK). Live setup is blocked on a valid Cloudinary API secret.
 - Deadline: submit by **Oct 3, 20:00 IST** (code freeze Oct 4, 00:15).
