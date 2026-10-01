@@ -1,0 +1,12 @@
+# Never upload secrets, the raw recording or the video project to Vercel.
+.env
+.env.*
+!.env.example
+node_modules
+.next
+.gstack
+video
+demo video
+demo-photos
+docs/media
+*.tsbuildinfo

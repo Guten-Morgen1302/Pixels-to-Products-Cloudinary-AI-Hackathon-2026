@@ -13,3 +13,6 @@ video/node_modules/
 video/out/
 video/public/clips/
 video/.env
+
+.vercel
+.env*
