@@ -1,0 +1,12 @@
+RealStage demo photos (all tested: clean cutouts on real stages)
+
+USE FOR THE LIVE DEMO:  1-HERO-teapot.jpg
+  - Upload it with "Upload a product photo" (cutout takes ~25 s).
+  - Relight it once, then Generate: "brass thali table, festive evening" (Flux, 3 variations).
+  - Chai teapot on a festive brass stage = perfect India story.
+
+Backups if you want a second product:  2-pink-sneaker.jpg, 3-white-mug.jpg
+Others (4-6) are extra options; they also work.
+
+RULE: in live mode, click Relight and Generate ONCE each (they cost AI credits).
+Source: Cloudinary's public demo images.
