@@ -14,6 +14,18 @@
 **Priority:** P3
 **Depends on:** Kit export tagging
 
+### Hide the file extension in the product name
+
+**What:** Show "qa-real-photo" instead of "qa-real-photo.jpg" under "Your product" in the studio.
+
+**Why:** Cosmetic. Raw filenames look unpolished in the demo; the kit file names already strip the extension.
+
+**Context:** Found by /qa on 2026-10-01 (ISSUE-002, low/ux). The name is set in `components/Studio.tsx` `onFile` (`file.name`). Strip `/\.[a-z0-9]+$/i` for display only; keep `productName` as-is for the server.
+
+**Effort:** S (human) / S (CC)
+**Priority:** P3
+**Depends on:** None
+
 ## Infrastructure
 
 ### Per-session caps
