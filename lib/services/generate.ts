@@ -95,10 +95,13 @@ function assertRelightInput(sessionId: string, i: RelightInput) {
   if (!ok) throw new AppError("BAD_REQUEST", MESSAGES.BAD_REQUEST);
 }
 
-export async function startRelight(port: CloudPort, cfg: Config, sessionId: string, input: RelightInput) {
+// pool "build" is only for operator scripts (bake-off), which guard spend against remaining quota themselves (X2).
+export async function startRelight(port: CloudPort, cfg: Config, sessionId: string, input: RelightInput, pool: "prod" | "build" = "prod") {
   assertRelightInput(sessionId, input);
-  const r = await reserveGeneration(port, cfg, EDIT_MODEL.credits);
-  if (!r.ok) throw new AppError("BUDGET_PAUSED", MESSAGES.BUDGET_PAUSED, 503);
+  if (pool === "prod") {
+    const r = await reserveGeneration(port, cfg, EDIT_MODEL.credits);
+    if (!r.ok) throw new AppError("BUDGET_PAUSED", MESSAGES.BUDGET_PAUSED, 503);
+  }
   const compositeId = `${sessionFolder(sessionId)}/comp-${randomUUID().slice(0, 12)}`;
   const comp = await port.uploadFromUrl(compositeSourceUrl(port.cloud, input.stage, input.cut), {
     publicId: compositeId,

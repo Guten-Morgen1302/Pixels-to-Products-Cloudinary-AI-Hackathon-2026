@@ -7,14 +7,14 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 let sampleCache: { at: number; samples: Sample[] } | null = null;
-type Sample = { publicId: string; name: string };
+type Sample = { publicId: string; name: string; cutW?: number; cutH?: number };
 
 async function samples(port: CloudPort): Promise<Sample[]> {
   if (sampleCache && Date.now() - sampleCache.at < 300_000) return sampleCache.samples;
   try {
     const list = (await port.listTag("sample"))
       .filter((a) => !/_(cut|core)$/.test(a.publicId))
-      .map((a) => ({ publicId: a.publicId, name: a.context?.rs_name ?? "Sample" }))
+      .map((a) => ({ publicId: a.publicId, name: a.context?.rs_name ?? "Sample", cutW: Number(a.context?.rs_cut_w) || undefined, cutH: Number(a.context?.rs_cut_h) || undefined }))
       .sort((a, b) => a.publicId.localeCompare(b.publicId));
     sampleCache = { at: Date.now(), samples: list };
     return list;

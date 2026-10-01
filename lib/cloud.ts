@@ -15,7 +15,7 @@ export type Asset = {
 };
 
 export type GenAsset = { publicId: string; assetId: string; width: number; height: number; modelId: string; seed: number };
-export type GenResult = { status: "pending" | "done" | "failed"; taskId?: string; assets?: GenAsset[]; error?: string; quotaRemaining?: number };
+export type GenResult = { status: "pending" | "done" | "failed"; taskId?: string; assets?: GenAsset[]; error?: string; quotaRemaining?: number; usedByRequest?: number };
 
 export interface CloudPort {
   cloud: string;
@@ -71,6 +71,7 @@ export function parseGen(json: any): GenResult {
     assets: assets.length ? assets : undefined,
     error: data.error?.message ?? json?.error?.message,
     quotaRemaining: typeof quota?.remaining === "number" ? quota.remaining : undefined,
+    usedByRequest: typeof quota?.used_by_request === "number" ? quota.used_by_request : undefined,
   };
 }
 
