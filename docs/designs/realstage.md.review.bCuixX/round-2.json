@@ -1,0 +1,183 @@
+{
+  "version": 1,
+  "round": 2,
+  "document": "C:\\Hackathons\\Pixels to Products — Cloudinary AI Hackathon 2026\\docs\\designs\\realstage.md",
+  "quality_score": 7,
+  "dimensions": {
+    "completeness": "ISSUES",
+    "consistency": "ISSUES",
+    "clarity": "ISSUES",
+    "scope": "PASS",
+    "feasibility": "ISSUES"
+  },
+  "findings": [
+    {
+      "id": "R2-1",
+      "dimension": "consistency",
+      "problem": "The Fit rule says to scale '_cut (already e_trimmed)', and it computes x/y/w from the _cut dimensions returned by the upload response. Step 2, however, materializes _cut from 'e_background_removal/f_png' with no e_trim, and the Amazon main transform applies e_trim again. An untrimmed _cut keeps the full phone-photo frame with transparent padding. The fit, floor placement and 9:16 containment math would then use the whole frame instead of the product, so the product shrinks and floats above floor_y. _core (derived from _cut) must also share _cut's exact dimensions, or the reused Pixel-Lock coordinates will not line up.",
+      "remedy": "Add e_trim to the materialization in step 2 (for example e_background_removal/e_trim/f_png), or compute the geometry from trimmed dimensions. Also state that _core is derived from the trimmed _cut with identical pixel dimensions."
+    },
+    {
+      "id": "R2-2",
+      "dimension": "consistency",
+      "problem": "The global generation cap '~5/day at 50 credits' does not follow from the budget. The judge reserve is 18 credits over Oct 3-10 (8 days), about 2.25 credits/day. The budget table implies about 1.5-2 credits per call (bake-off 14 credits for 9 calls, library 12 credits for 6-8 stages), so the formula yields about 1-1.5 calls/day, not 5. The wireframe shows ~4-6 credits per stage. A single per-session '1 new-stage fan-out' (3 calls) therefore exceeds a whole day's reserve. The cap also counts calls while per-model and 2K costs vary.",
+      "remedy": "Express the cap in credits, or in calls weighted by the verified per-model cost at 2K. Recompute the number from the table. Then reconcile the per-session relight and fan-out allowances with it, or reallocate the budget. Also state whether the fan-out is realistically fundable in the judge window."
+    },
+    {
+      "id": "R2-3",
+      "dimension": "completeness",
+      "problem": "The new-stage fan-out needs 3 generation calls, but the design does not say what happens when fewer than 3 calls remain under the global cap. It could run a partial fan-out, be disabled, or overshoot.",
+      "remedy": "Define the rule: fan-out is enabled only when at least 3 calls (or their credit cost) remain and is reserved atomically, or partial fan-outs are allowed and labeled."
+    },
+    {
+      "id": "R2-4",
+      "dimension": "feasibility",
+      "problem": "The cutout cap of 60/day is said to be 'derived from the budget below', but that budget covers only generation credits. 60 cutouts x 75 transformations = 4.5 of the 25 monthly plan credits per day, so the cap would exhaust the whole plan in about 5 days, before the Oct 3-10 judge window ends. Storage and delivery of 10 MB uploads, 2K stages, materialized finals, kit files and archives draw from the same 25 credits. The transformation and storage budget is still absent from the cap design.",
+      "remedy": "Add a transformation/storage budget covering build, bake-off, video and judge window, then derive the cutout cap from it (for example 25 credits minus reserved usage, divided by 75 transformations, divided by the days). Include the per-upload storage/bandwidth cost."
+    },
+    {
+      "id": "R2-5",
+      "dimension": "feasibility",
+      "problem": "Caps count today's 'gen-YYYYMMDD' tagged outputs, but generation is async (up to 90 s), so in-flight tasks have no tagged output yet. Every request during that window passes the check, so overshoot can far exceed the stated 1-2 when the cap is about 5 calls/day. Nothing says how outputs get the gen- tag (whether the generate API accepts tags or the server adds them after completion). Failed relights, and fallback relights that are not materialized, also spent credits: 'Credits spent are still counted' has no mechanism.",
+      "remedy": "Record each generation at request time: tag a placeholder or task-marker asset, or use KV, before calling /v2/generate. Specify how a gen- tag is attached to outputs and failures, then restate the realistic overshoot tolerance."
+    },
+    {
+      "id": "R2-6",
+      "dimension": "completeness",
+      "problem": "Every cap check and every header-counter render calls Admin API resources_by_tag, and the free plan has an hourly Admin API rate limit. The share page and cleanup also use the Admin API. The design does not say whether cap enforcement fails open or closed when the Admin API errors or is rate-limited. Failing open would expose generation and cutout credits to scripted abuse.",
+      "remedy": "State fail-closed behavior for generation and cutout when the counter lookup fails. Cache the header count briefly, for example 30-60 s, and include Admin API call volume in the Upstash KV fallback decision."
+    },
+    {
+      "id": "R2-7",
+      "dimension": "consistency",
+      "problem": "Premise 5 says generation happens only 'under numeric caps', but the priority list puts 'caps + counter' in Should ship alongside relight and fan-out, with no coupling. Relight or fan-out could ship without caps. The must-ship public upload-to-cutout path could also ship without the cutout cap and upload limits, which are not listed in any tier, exposing the 25-credit plan on a public URL.",
+      "remedy": "Make the cutout cap and the upload type/size limits must-ship. Add a rule that relight and fan-out ship only together with the generation cap."
+    },
+    {
+      "id": "R2-8",
+      "dimension": "feasibility",
+      "problem": "Step 1 says 'Signed server upload', and upload limits accept files up to 10 MB 'enforced client and server side'. If the file passes through a Vercel route, the Vercel function request-body limit (about 4.5 MB) rejects many phone photos below 10 MB. If the client uploads directly to Cloudinary with a server signature instead, the design does not say how the server enforces size and type, or how it checks the cutout cap before the upload.",
+      "remedy": "Choose the upload path. Either use a direct signed browser-to-Cloudinary upload with signed allowed_formats, a pre-sign cap check and a post-upload size check that deletes oversized files, or keep the server route and lower the size limit or downscale on the client. Document the choice."
+    },
+    {
+      "id": "R2-9",
+      "dimension": "completeness",
+      "problem": "The must-ship zero-credit path (step 3) is described only as 'pure Cloudinary overlay URLs'. Bake-off approach (a), however, is 'library stage + composite + shadow', and the Cross-Model Perspective warns that an empty stage plus a 2D overlay 'looks pasted'. No shadow mechanism is specified for the composite: e_shadow drop shadow, a pre-made contact-shadow overlay at floor_y, or none.",
+      "remedy": "Specify how the zero-credit composite gets its shadow (the technique, and its placement tied to floor_y and the product width), and include it in the step 3 transform."
+    },
+    {
+      "id": "R2-10",
+      "dimension": "clarity",
+      "problem": "The kit crops derive from 'the materialized final', and structured metadata is 'set on the materialized final asset only'. In the default no-relight path, nothing is materialized: the composite is a transformation URL. So the must-ship path's crop source and metadata target are undefined, and rs_alignment and rs_pixel_locked have no defined values for unrelit kits.",
+      "remedy": "Define 'final' for the no-relight path (materialize the composite at export, or chain crops on the composite URL). State the metadata values for unrelit kits (for example rs_pixel_locked=yes because the original pixels are used directly, rs_alignment empty)."
+    },
+    {
+      "id": "R2-11",
+      "dimension": "consistency",
+      "problem": "The wireframe that the layout references (docs/designs/assets/sketch.png) still shows 'Fidelity 99.4% / 98.9% / 99.1%' on all three cards, an always-on 'Real pixels locked' badge, and 'Credits left today: 7 / 10'. The document now defines an alignment NCC score only on the single relit card ('Alignment 0.93'), applies Pixel-Lock only after relight, and labels the counter 'Live AI tries left today: N'. The retired fidelity metric remains in the design artifact.",
+      "remedy": "Update the sketch (and sketch.html) to show alignment only on a relit card, gate the Pixel-Lock badge on relight, and use the specified counter label. Alternatively, note in the document that the wireframe's labels are superseded."
+    },
+    {
+      "id": "R2-12",
+      "dimension": "feasibility",
+      "problem": "The ring NCC (12 px outside the mask edge, required >= 0.6) compares the relit output with the composite in exactly the region where the relight prompt asks for a new contact shadow and changed scene light. Legitimate relights can therefore fail the ring check. Alternatively, the threshold gets loosened on 3 bake-off SKUs until it stops catching shift/rescale ghosts.",
+      "remedy": "Exclude the contact-shadow region (for example the bottom arc near floor_y) from the ring, or compare edge/gradient maps rather than intensity. Record ring NCC for known-good and known-shifted outputs in the bake-off before fixing the threshold."
+    },
+    {
+      "id": "R2-13",
+      "dimension": "clarity",
+      "problem": "The alignment region is given as 'the product mask bounding box from _cut alpha', while the algorithm computes NCC 'inside the mask'. The _cut alpha is in _cut's own pixel space, not composite coordinates. The design does not say whether the region is the mask or its bounding box, or that the mask must be scaled and offset by the fit-rule x/y/w into composite and relit-output coordinates.",
+      "remedy": "State that the check uses the _cut alpha mask transformed by the placement geometry (scale to w, offset by x,y) into composite coordinates. Choose mask vs bounding box for the inner NCC, and derive the ring from the same transformed mask."
+    },
+    {
+      "id": "R2-14",
+      "dimension": "completeness",
+      "problem": "Cutout async handling retries 3 times with a 3 s backoff on 423 but does not say what happens when removal is still processing after the retries. It is not stated whether the client re-polls, sees an error, or gets a retry button, so the cutout's timeout behavior is still unspecified.",
+      "remedy": "Define the cutout timeout path: the client polls a status route until an overall limit (for example 45 s), then shows a retry/retake message. State whether a retry re-bills removal."
+    },
+    {
+      "id": "R2-15",
+      "dimension": "consistency",
+      "problem": "The Problem Statement says 'Vercel runs only thin API routes and one small image check (alignment score)'. The design also runs sharp on Vercel to build _core (2 px alpha erosion plus 1 px feather) and to sample the Amazon main's corners and edges for RGB 255.",
+      "remedy": "Rewrite the claim to list all Vercel-side image work (alignment check, _core generation, Amazon white check), or move _core generation into a Cloudinary transformation."
+    },
+    {
+      "id": "R2-16",
+      "dimension": "consistency",
+      "problem": "The success criterion '`git log -p | grep -i secret` finds nothing' contradicts the committed .env.example placeholders (for example CLOUDINARY_API_SECRET=) and any code that reads process.env.CLOUDINARY_API_SECRET, so it always fails. It also cannot detect a leaked secret value, which does not contain the word 'secret'.",
+      "remedy": "Replace it with a check for the actual key and secret values across history (for example `git log -p | grep -F \"$CLOUDINARY_API_SECRET\"`, or run gitleaks) that returns nothing."
+    },
+    {
+      "id": "R2-17",
+      "dimension": "feasibility",
+      "problem": "The success criterion requires 'model_id, seed and cost visible' on at least 3 cards, and live stages are 'seed pinned'. Not every target model necessarily accepts or returns a seed: the wireframe itself shows 'seed -' for recraft-v4. The Oct 1 checks do not verify seed support.",
+      "remedy": "Add per-model seed support to the Oct 1 model check. Define the card display and the success criterion for models without seeds (for example 'seed: n/a')."
+    },
+    {
+      "id": "R2-18",
+      "dimension": "clarity",
+      "problem": "If fewer than 3 families work, the grid shows a 'more models' card 'linking a pre-rendered comparison'. The design does not say where that comparison comes from if the missing family cannot run on the account, or who produces it and when.",
+      "remedy": "Say what the comparison contains and how it is produced (for example rendered in the bake-off from families that did work, or drop the card and show 2 cards)."
+    },
+    {
+      "id": "R2-19",
+      "dimension": "clarity",
+      "problem": "Step 5 produces 3 new stages, but the design does not say where they appear: whether they replace the grid cards or go into the wireframe's 'Saved stages' strip. It also does not say whether they persist per session, expire with exp-, or become visible to other users. The 'saved-stages strip' is referenced in the wireframe note but never defined in the flow.",
+      "remedy": "Define the UI placement of new stages, their scope (session-only, tagged session- and exp-, never lib), and what the Saved stages strip lists."
+    },
+    {
+      "id": "R2-20",
+      "dimension": "feasibility",
+      "problem": "Live stages get a fixed default geometry (floor_y 0.8, anchor_x 0.5, and so on) on the assumption that the model obeyed the 'clear product area centered in the lower half' prompt. Generation often places objects or horizons differently, so products will float or overlap scene objects on live stages. Library stages avoid this only because their geometry is authored by hand.",
+      "remedy": "Include live-stage placement quality in the bake-off's 3 stage tests, and either declare it a limitation on live stages or add a simple user nudge (for example drag or a floor slider)."
+    },
+    {
+      "id": "R2-21",
+      "dimension": "completeness",
+      "problem": "The claim that 'max_w <= 0.5 guarantees a centered 9:16 crop contains the product' holds only if anchor_x lies within [max_w/2, 1 - max_w/2] and the crop window is clamped to the frame. Hand-authored library geometry has no such constraint, and 'c_crop,ar_9:16 centered on anchor_x' needs an explicit computed x offset in Cloudinary.",
+      "remedy": "Add the authoring constraint on anchor_x relative to max_w. State that the crop x is computed server-side as clamp(anchor_x*W - cropW/2, 0, W - cropW) and passed with g_north_west."
+    },
+    {
+      "id": "R2-22",
+      "dimension": "completeness",
+      "problem": "The Amazon white check samples only corners and edge midpoints, which fall in the padded margin and are white by construction. It never checks the background inside the trimmed product box, where semi-transparent background-removal remnants blend into the white. The f_png fallback can also keep transparent pixels in that region, which is not pure white.",
+      "remedy": "Flatten transparency onto white explicitly (b_white applied to the alpha, or a flatten step) for both JPG and PNG outputs. Extend the check to sample the area outside the product mask within the trimmed box, or state that it is out of scope."
+    },
+    {
+      "id": "R2-23",
+      "dimension": "clarity",
+      "problem": "Upload limits accept HEIC, but 'HEIC polish' is a Could-ship item. The design does not say what works if the polish is cut. Browsers other than Safari cannot preview HEIC in the upload column, and sharp prebuilt on Vercel usually lacks HEIC decoding if any server step touches the original.",
+      "remedy": "State the HEIC baseline: Cloudinary converts on upload and all previews use f_auto delivery URLs, so no browser or sharp HEIC decoding is needed. Alternatively, drop HEIC from accepted inputs until the polish ships."
+    }
+  ],
+  "prior": [
+    {"id": "R1-1", "status": "resolved", "evidence": "Step 3 (library-stage grid) is 0 generation calls; the success criterion is 'zero generation credits (library path)'; the cap-hit behavior disables only relight and new stages while 'the zero-credit path continues'.", "current_id": null},
+    {"id": "R1-2", "status": "resolved", "evidence": "The 'Flow and generation-call accounting' table defines each card as the product on a library stage from a different family (0 calls), relight as 1 call on 1 card, and new stages as 3 calls.", "current_id": null},
+    {"id": "R1-3", "status": "resolved", "evidence": "The Synthesis and the 'Alignment check' section redefine the score as NCC of the relit output before the overlay (mask plus 12 px ring) and state what the label measures.", "current_id": null},
+    {"id": "R1-4", "status": "resolved", "evidence": "The Alignment check section gives inputs, the algorithm (sharp, Vercel route), thresholds (0.85/0.6), and the fallback note shown on the relit card.", "current_id": null},
+    {"id": "R1-5", "status": "resolved", "evidence": "The 'Placement geometry' section defines context fields, hand-authored library geometry, live-stage defaults and a fit rule. The trim inconsistency it depends on is tracked separately as new R2-1.", "current_id": null},
+    {"id": "R1-6", "status": "resolved", "evidence": "The Alignment check resizes the output when its aspect matches, falls back when the aspect differs, and the bake-off records 'output dimensions returned'.", "current_id": null},
+    {"id": "R1-7", "status": "resolved", "evidence": "The 'Edge handling' section uses the _core layer (2 px erosion, 1 px feather), declares the translucent-edge limitation, and adds a halo check to bake-off scoring.", "current_id": null},
+    {"id": "R1-8", "status": "resolved", "evidence": "The Bake-off drops e_gen_background_replace with its rationale, lists scoring fields, and gives the ship rule for (c) vs (a).", "current_id": null},
+    {"id": "R1-9", "status": "resolved", "evidence": "Open Questions verify text_to_image/image_to_image support per model; the 2-card-plus-'more models' fallback is defined, and relight needs only one edit model (the bake-off winner).", "current_id": null},
+    {"id": "R1-10", "status": "persisting", "evidence": "The credit budget table and the below-35-credit rule were added, but the cap number '~5/day at 50 credits' is not derivable from the table's 18-credit reserve and its implied ~1.5-2 credits per call, so concrete caps derived from the budget are still missing.", "current_id": "R2-2"},
+    {"id": "R1-11", "status": "resolved", "evidence": "The 'Caps, counters, abuse' section chooses Cloudinary tags counted via Admin API, enforced in the API route, with a stated tolerance and an Upstash KV fallback. The in-flight counting and fail-mode refinements are new R2-5 and R2-6.", "current_id": null},
+    {"id": "R1-12", "status": "persisting", "evidence": "Upload limits, a per-session upload cap, a 60/day cutout cap and the moderation accepted-risk were added, but the transformation budget is still not part of the cap design: 60 cutouts/day would use 4.5 of the 25 plan credits per day.", "current_id": "R2-4"},
+    {"id": "R1-13", "status": "resolved", "evidence": "The 'Retention and sharing' section adds exp-<today+7> tags, npm run cleanup, the share-page scope until expiry, and a disclaimer on the upload screen.", "current_id": null},
+    {"id": "R1-14", "status": "resolved", "evidence": "The Amazon main transform pads to 1700 and then 2000 on white; the success criterion is 85% +/-3%.", "current_id": null},
+    {"id": "R1-15", "status": "resolved", "evidence": "Step 2 materializes _cut as its own asset; 'every later output derives from _cut, never re-runs removal'; Amazon main is built from _cut.", "current_id": null},
+    {"id": "R1-16", "status": "resolved", "evidence": "The kit table uses f_jpg with explicit quality for downloads, f_auto only for previews, and an RGB 255 corner check with a PNG fallback.", "current_id": null},
+    {"id": "R1-17", "status": "resolved", "evidence": "Stages are 1:1 at 2048 px; crops are centered on anchor_x; max_w <= 0.5 is stated for 9:16 containment. The anchor-bound refinement is new R2-21.", "current_id": null},
+    {"id": "R1-18", "status": "resolved", "evidence": "The kit table lists 2000x2000, 1080x1350, 1080x1920 and 1080x1080.", "current_id": null},
+    {"id": "R1-19", "status": "persisting", "evidence": "Generation polling and its 90 s UI timeout are specified, but the cutout path ('retries 3x with 3s backoff') has no outcome or UI behavior after the retries are exhausted.", "current_id": "R2-14"},
+    {"id": "R1-20", "status": "resolved", "evidence": "The relit output is 'materialized as asset'; structured metadata fields are created by npm run setup:metadata on Oct 1 and set on the materialized final. The undefined final in the no-relight path is new R2-10.", "current_id": null},
+    {"id": "R1-21", "status": "resolved", "evidence": "The channel field was removed; structured metadata is declared authoritative for display, and rs_alignment is stored only there.", "current_id": null},
+    {"id": "R1-22", "status": "resolved", "evidence": "The 'Upload limits' and 'Inputs and failure states' sections cover formats, 10 MB, EXIF, the alpha-coverage sanity check with a retake message, and multi-item as a declared limitation.", "current_id": null},
+    {"id": "R1-23", "status": "resolved", "evidence": "Step 6 builds the zip through a Cloudinary archive by kit tag; the share link /k/<kitId> is a page listing the 4 files plus the zip, valid until expiry.", "current_id": null},
+    {"id": "R1-24", "status": "persisting", "evidence": "The time claim is aligned (under 90 seconds), but the Problem Statement still says Vercel runs 'only ... one small image check', omitting the sharp _core generation and the Amazon white check.", "current_id": "R2-15"},
+    {"id": "R1-25", "status": "resolved", "evidence": "The header counter is 'global cap minus today's gen- count', with limits.addons_quota[].remaining logged after each generation.", "current_id": null},
+    {"id": "R1-26", "status": "resolved", "evidence": "The Zomato ban and the INR 4,000-5,000 figure now cite Inc42 and Business Upturn; the 'judges asked for' claim was replaced by an attributed quote from the event page.", "current_id": null},
+    {"id": "R1-27", "status": "resolved", "evidence": "The 'Feature priority and cut rule' section ranks Must/Should/Could with checkpoints at Oct 2 18:00 and Oct 3 12:00. The caps-coupling gap is new R2-7.", "current_id": null},
+    {"id": "R1-28", "status": "resolved", "evidence": "The wireframe is referenced at docs/designs/assets/sketch.png, and the file exists in the repo. Its stale labels are new R2-11.", "current_id": null}
+  ]
+}

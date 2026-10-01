@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>RealStage mobile mockup (fixed export bar)</title>
+<!-- Standalone 390 px reference. The export bar is position:fixed with safe-area padding,
+     exactly as DESIGN.md specifies. Open at a phone width and scroll: the bar stays put. -->
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,800&family=Instrument+Sans:wght@400;600&family=JetBrains+Mono&display=swap" rel="stylesheet">
+<style>
+  :root { --bg:#FFFFFF; --surface:#F5F6F8; --ink:#16181D; --ink-2:#5B6270; --line:#E4E6EB; --accent:#0B6E4F; --focus:#0B6E4F; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:400 16px/24px "Instrument Sans", sans-serif; color:var(--ink); background:var(--bg); padding-bottom:calc(88px + env(safe-area-inset-bottom)); }
+  header { display:flex; justify-content:space-between; align-items:center; padding:12px 16px; border-bottom:1px solid var(--line); }
+  .mark { font:800 20px/1 "Bricolage Grotesque", sans-serif; letter-spacing:-.02em; } .mark span { color:var(--accent); }
+  .meta { font:400 13px/18px "JetBrains Mono", monospace; color:var(--ink-2); }
+  main { padding:16px; }
+  .well { background:var(--surface); border-radius:10px; display:flex; align-items:center; justify-content:center; color:var(--ink-2); font-size:14px; }
+  .stage { aspect-ratio:4/5; }
+  .opts { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:12px; }
+  [role=radio] { border:1.5px solid var(--line); border-radius:10px; padding:4px; background:#fff; }
+  [role=radio][aria-checked=true] { border:2px solid var(--ink); padding:3.5px; }
+  [role=radio] .well { height:88px; }
+  .row { display:flex; gap:8px; margin-top:12px; }
+  button { font:600 14px/1 "Instrument Sans", sans-serif; min-height:44px; flex:1; border-radius:8px; border:1.5px solid var(--ink); background:#fff; color:var(--ink); }
+  button:focus-visible, [role=radio]:focus-visible { outline:2px solid var(--focus); outline-offset:2px; }
+  .kit { margin-top:20px; } .kit li { display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--line); font-size:14px; list-style:none; } .kit ul { padding:0; margin:0; }
+  .bar { position:fixed; left:0; right:0; bottom:0; padding:12px 16px calc(12px + env(safe-area-inset-bottom)); background:#fff; border-top:1px solid var(--line); }
+  .bar button { width:100%; background:var(--accent); border-color:var(--accent); color:#fff; font-size:15px; }
+</style>
+</head>
+<body>
+<header><span class="mark">Real<span>Stage</span></span><span class="meta">AI 12/15</span></header>
+<main>
+  <div class="well stage">selected stage (4:5)</div>
+  <div class="opts" role="radiogroup" aria-label="Choose a stage">
+    <div role="radio" aria-checked="true" tabindex="0" aria-label="Kota stone"><div class="well">kota</div></div>
+    <div role="radio" aria-checked="false" tabindex="-1" aria-label="Teak shelf"><div class="well">teak</div></div>
+    <div role="radio" aria-checked="false" tabindex="-1" aria-label="Terracotta"><div class="well">terracotta</div></div>
+  </div>
+  <p class="meta" style="margin:8px 0 0">Kota stone · flux-2-klein-9b · seed 42 · Free to use</p>
+  <div class="row"><button aria-pressed="false">Compare</button><button>Relight · 1</button><button>New · 3</button></div>
+  <section class="kit" aria-label="Export kit"><ul>
+    <li><span>Amazon main · white</span><span class="meta">2000×2000</span></li>
+    <li><span>Instagram · Social preview</span><span class="meta">1080×1350</span></li>
+    <li><span>Story · Social preview</span><span class="meta">1080×1920</span></li>
+    <li><span>WhatsApp / Meesho</span><span class="meta">1080×1080</span></li>
+  </ul></section>
+</main>
+<div class="bar"><button>Download all · 4 files</button></div>
+</body>
+</html>

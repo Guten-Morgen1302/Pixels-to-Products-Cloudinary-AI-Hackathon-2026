@@ -1,0 +1,184 @@
+{
+  "version": 1,
+  "round": 1,
+  "document": "C:\\Hackathons\\Pixels to Products — Cloudinary AI Hackathon 2026\\docs\\designs\\realstage.md",
+  "quality_score": 6,
+  "dimensions": {
+    "completeness": "ISSUES",
+    "consistency": "ISSUES",
+    "clarity": "ISSUES",
+    "scope": "ISSUES",
+    "feasibility": "ISSUES"
+  },
+  "findings": [
+    {
+      "id": "R1-1",
+      "dimension": "consistency",
+      "problem": "Success Criteria promise a judge a kit 'without spending generation credits (library stages)', but Recommended Approach step 4 runs image_to_image (a generation call) on every product+stage harmonization. Library stages are product-independent, so a judge's own upload cannot use a pre-generated harmonized result, and the library-only path still spends credits. Demo mode ('serves library stages only when the cap is hit') has the same gap.",
+      "remedy": "Say what the zero-credit path actually does: plain composite + shadow with no relight, or relight counted against the cap. Rewrite the success criterion and the demo-mode behavior to match."
+    },
+    {
+      "id": "R1-2",
+      "dimension": "clarity",
+      "problem": "The document never says which step fans out across 3 models. 'Same product, 3 models, side by side' and 'per-model fidelity number' imply 3 image_to_image harmonizations per upload. Step 3, however, applies model choice to text_to_image stage generation, and the wireframe shows a 'model grid' of stages. The credit cost per upload differs by 3x depending on the answer.",
+      "remedy": "State exactly what each of the 3 grid cards is (stage from model X, harmonized by which model?) and how many generation calls one upload triggers in the library path and in the live path."
+    },
+    {
+      "id": "R1-3",
+      "dimension": "feasibility",
+      "problem": "The fidelity % is tautological. Pixel-Lock overlays the original cutout pixels back at identical geometry, so a masked diff inside the cutout mask will read about 100% by construction (only compression noise). It cannot detect the real failure: image_to_image shifting or rescaling the product, which leaves a ghost or misaligned relit silhouette around the overlay. So the '>= 97% fidelity' and 'labels remain legible' criteria are met trivially and prove nothing.",
+      "remedy": "Redefine the metric to measure alignment. For example, diff the relit output against the pre-relight composite in a band just outside the mask edge, or compare the relit product region to the cutout before the overlay. Set the pass/fail threshold on that value and state what the displayed % means."
+    },
+    {
+      "id": "R1-4",
+      "dimension": "completeness",
+      "problem": "Step 4 falls back 'if fidelity/alignment check fails', but no alignment check is defined apart from the (tautological) fidelity diff. Its inputs, threshold, and where it runs are not specified.",
+      "remedy": "Define the alignment check concretely (inputs, algorithm, threshold, and whether it runs per model card), and state what the user sees when one model's card falls back."
+    },
+    {
+      "id": "R1-5",
+      "dimension": "completeness",
+      "problem": "'Stored placement geometry' is used for the composite and the overlay, but nothing says how it is produced. Pre-generated stages need a defined placement surface. Live-generated stages have no geometry at all. Products differ in aspect ratio and size (a tumbler, a saree, a jar), so one fixed x/y/scale per stage will float or crop some products.",
+      "remedy": "Specify how placement is authored or derived for library stages and for live stages (manual per-stage anchor plus scale-to-fit rule, fixed floor line, etc.), where it is stored (stage context), and how the product's size and aspect are fit into it."
+    },
+    {
+      "id": "R1-6",
+      "dimension": "feasibility",
+      "problem": "The Pixel-Lock overlay assumes the image_to_image output keeps the composite's pixel dimensions and framing. Generation models often return fixed resolutions or aspect ratios and may reframe. If they do, 'same geometry' coordinates no longer map onto the output.",
+      "remedy": "Add a requirement to check the output dimensions for each model in the bake-off. Specify rescaling or coordinate mapping (or rejection) when the output size or aspect differs from the input composite."
+    },
+    {
+      "id": "R1-7",
+      "dimension": "feasibility",
+      "problem": "Overlaying the original cutout keeps its edge alpha and color spill from the original bedsheet or tile background. On soft or translucent edges (the saree SKU) or shiny surfaces (the steel tumbler) this can leave a visible halo or the original background's reflections on top of the relit scene. That undercuts the 'looks real' goal.",
+      "remedy": "Choose and document edge handling for the overlay: mask erosion or feathering, letting relit pixels show in a thin edge band, or a declared limitation for soft-edge products. Add halo inspection to the bake-off criteria."
+    },
+    {
+      "id": "R1-8",
+      "dimension": "clarity",
+      "problem": "The bake-off compares (a), (b) e_gen_background_replace, and (c), but the pipeline only defines what happens if (a) or (c) wins. If (b) wins, the stage library, 3-model choice, placement geometry and Pixel-Lock do not apply, and the Track 2 'model choice' headline could break. The criteria for choosing the winner (visual quality, credits, latency, fidelity) are also unstated.",
+      "remedy": "Write down the bake-off scoring criteria and the product and pipeline changes for each possible winner, including (b). If (b) is not really a candidate, drop it."
+    },
+    {
+      "id": "R1-9",
+      "dimension": "feasibility",
+      "problem": "The 'Same product, 3 models' headline assumes 3 model families that support the needed operations (text_to_image for stages and, if R1-2 resolves that way, image_to_image with a reference image for relighting). Open Questions only ask about credit cost, not whether 3 models support image_to_image.",
+      "remedy": "Add verifying which available models support image_to_image with a reference image to the Oct 1 first-hour checks. Define the fallback display if fewer than 3 qualify."
+    },
+    {
+      "id": "R1-10",
+      "dimension": "completeness",
+      "problem": "There is no numeric credit budget. About 50 generation credits must cover the bake-off (3 SKUs x 3 approaches x retries), 6-8 library stages, demo-video recording, and judge usage, yet the per-session and global daily cap values are unset. There is also no decision if the allotment turns out to be insufficient (for example, buying credits at about 1 cent each).",
+      "remedy": "Add a budget table that allocates credits to bake-off, library, video and judge reserve. Set concrete cap numbers derived from it, and state the action if the verified allotment is too small."
+    },
+    {
+      "id": "R1-11",
+      "dimension": "feasibility",
+      "problem": "Per-session and global daily caps are required, but the design has no database and runs on stateless Vercel functions. It does not say where the counters live. A cookie/session counter is trivially bypassed. A global counter needs persistent, race-safe state, and Search API counts are eventually consistent.",
+      "remedy": "Choose and document the counter store and enforcement point, for example tagging each generation with a date tag and counting via the Admin API, or a small KV store. Accept and state the approximate-enforcement tolerance."
+    },
+    {
+      "id": "R1-12",
+      "dimension": "completeness",
+      "problem": "Abuse protection covers only generation credits. Every public upload triggers e_background_removal at 75 transformations. The 25-credit plan is about 25,000 transformations, shared with delivery and storage, so roughly 300 cutouts in total. There are no upload size/type limits, no rate limit on the upload route, and no content moderation, even though uploads become public assets on the hackathon account.",
+      "remedy": "Add an upload rate limit and a cap on background removals, file type and size limits, and a moderation decision (Cloudinary moderation add-on, or an explicit accepted risk). Include the transformation budget in the cap design."
+    },
+    {
+      "id": "R1-13",
+      "dimension": "completeness",
+      "problem": "Retention and privacy of user uploads are not addressed. Seller or judge photos, cutouts and outputs persist as public assets indefinitely, count against storage credits, and the 'share link' exposes them to anyone who has it.",
+      "remedy": "State the retention policy (for example, auto-delete session assets after N days, or a stated demo disclaimer) and what the share link exposes and for how long."
+    },
+    {
+      "id": "R1-14",
+      "dimension": "consistency",
+      "problem": "The Amazon main transform `e_trim,c_pad,b_white,w_2000,h_2000` scales the trimmed product to fill the frame's limiting dimension edge to edge (100%). That contradicts the success criterion 'product ~85% of frame'.",
+      "remedy": "Specify a margin step, for example pad to about 1700px and then pad to 2000x2000 on white, or an equivalent border. Make the transform consistent with the 85% criterion."
+    },
+    {
+      "id": "R1-15",
+      "dimension": "feasibility",
+      "problem": "The Amazon main URL chains `e_background_removal` on the original again instead of reusing the eagerly derived cutout. Each distinct transformation chain can be re-billed at 75 transformations, which defeats 'paid once per product'.",
+      "remedy": "Derive every downstream output (Amazon main, composites) from one cached cutout: store the cutout as its own asset, or reuse the exact eager transformation string. State this in the pipeline."
+    },
+    {
+      "id": "R1-16",
+      "dimension": "feasibility",
+      "problem": "The kit uses `f_auto,q_auto` for downloadable files. f_auto negotiates the format per requester, so zipped or downloaded files may come out as WebP or AVIF, which Amazon and other marketplace uploaders may reject. Lossy compression can also turn background pixels slightly off #FFFFFF, failing the pure-white criterion.",
+      "remedy": "Use explicit formats for kit downloads (for example f_jpg with fixed quality, or PNG for Amazon main). Keep f_auto for on-screen previews only, and add a check that the Amazon background is exactly RGB 255."
+    },
+    {
+      "id": "R1-17",
+      "dimension": "feasibility",
+      "problem": "Instagram 4:5, Story 9:16 and 1:1 are all cropped from one staged image, but the stage's generation aspect and resolution are unspecified. A roughly 1024px square generation cropped to 9:16 yields about 576x1024 and can cut the product, and g_auto may pick scene content over the product.",
+      "remedy": "Specify the stage generation aspect and resolution so that all three crops fit (or generate per aspect and note the credit cost). Anchor cropping on the product placement rather than generic g_auto."
+    },
+    {
+      "id": "R1-18",
+      "dimension": "clarity",
+      "problem": "Output pixel dimensions are given only for Amazon (2000x2000). Instagram, Story and WhatsApp/Meesho sizes are aspect ratios only, so 'marketplace-ready' is not testable.",
+      "remedy": "List exact output dimensions per channel (for example 1080x1350, 1080x1920, 1080x1080 or Meesho's required size)."
+    },
+    {
+      "id": "R1-19",
+      "dimension": "feasibility",
+      "problem": "Eager background removal and /v2/generate can be asynchronous or slow. The design does not say whether routes poll, use webhooks, or block, while Vercel function timeouts limit blocking calls. Up to 3 generation calls plus cutout plus diff must fit the 90-second success criterion.",
+      "remedy": "Specify the async handling for cutout and generation (polling from the client vs a server wait), per-call timeouts, and the UI progress and timeout behavior. Confirm this against the Vercel plan's function limits."
+    },
+    {
+      "id": "R1-20",
+      "dimension": "feasibility",
+      "problem": "Step 6 sets structured metadata on 'the final asset', and step 4 writes fidelity to asset context. The Pixel-Lock result is built from transformation URLs (a derived image, not a stored asset), so there is nothing to attach metadata to unless the result is materialized. The structured metadata fields also must be created in the account beforehand, which the next steps omit.",
+      "remedy": "State that the harmonized output is uploaded or materialized as its own asset (folder and tags), and which asset carries context vs structured metadata. Add creating the metadata fields to Oct 1 setup."
+    },
+    {
+      "id": "R1-21",
+      "dimension": "clarity",
+      "problem": "The metadata field 'channel' on a single final asset is undefined, because one staged image feeds 4 channels. Fidelity is also recorded twice (context and structured metadata) without saying which is authoritative.",
+      "remedy": "Define what 'channel' holds (list or per-derived-asset) and keep one authoritative location for fidelity, or state why both exist."
+    },
+    {
+      "id": "R1-22",
+      "dimension": "completeness",
+      "problem": "Input edge cases are not handled: HEIC or very large phone photos, EXIF rotation, multiple products in one shot, and background removal failing or producing a bad mask on low-contrast bedsheet or tile. 'Error/empty/loading states' in Next Steps does not specify behavior.",
+      "remedy": "List accepted inputs and size limits and the behavior when the cutout fails or is poor (retry, manual retake prompt, or an explicit message)."
+    },
+    {
+      "id": "R1-23",
+      "dimension": "clarity",
+      "problem": "The zip download and share link have no mechanism or definition. The design does not say whether Cloudinary generate_archive, a server-side zip on Vercel or a client-side zip builds the file, or whether the share link is the archive URL, a page, or asset URLs.",
+      "remedy": "Choose the zip mechanism and define what the share link points to and its lifetime."
+    },
+    {
+      "id": "R1-24",
+      "dimension": "consistency",
+      "problem": "'Cloudinary does all of it: ... compositing, cropping ...' conflicts with the fidelity diff computed server-side on Vercel (and possibly zipping). 'In about a minute' in What Makes This Cool also differs from the 'under 90 seconds' success criterion.",
+      "remedy": "Qualify the all-Cloudinary claim to name the Vercel-side computation, and align the time claim with the success criterion."
+    },
+    {
+      "id": "R1-25",
+      "dimension": "clarity",
+      "problem": "The header's 'credits-left counter' has no data source. It is not stated whether the generation add-on's remaining balance is available via API or whether the counter is estimated locally from logged costs.",
+      "remedy": "Say where the counter's value comes from (API endpoint or locally tracked spend against the verified allotment) and whether it shows global or per-session credits."
+    },
+    {
+      "id": "R1-26",
+      "dimension": "completeness",
+      "problem": "Several key factual claims have no sources: the Zomato ban in Sept 2024 'after complaints, higher refunds and lower ratings', the INR 4,000-5,000 pro-shoot cost, and 'judges asked for' the 'core, not storage' answer. These drive the pitch and will appear in the README and video.",
+      "remedy": "Attach sources for each claim or soften the wording before it goes into the README or demo script."
+    },
+    {
+      "id": "R1-27",
+      "dimension": "scope",
+      "problem": "The 'narrowest wedge' still bundles live 3-model generation, Pixel-Lock, a fidelity metric, a stage library, caps and demo mode, structured metadata, zip, and a share link into one build day (Oct 2) with no cut order. Nothing says what to drop if the Oct 2 target slips.",
+      "remedy": "Rank the features as must-ship vs cut-if-late (for example share link, structured metadata, live generation), with a checkpoint time for triggering cuts."
+    },
+    {
+      "id": "R1-28",
+      "dimension": "clarity",
+      "problem": "The wireframe the layout depends on sits in a temp directory (AppData\\Local\\Temp\\gstack-sketch...) that will not survive cleanup and is not in the repo.",
+      "remedy": "Copy the sketch into the repo (for example docs/designs/) and reference that path."
+    }
+  ],
+  "prior": []
+}

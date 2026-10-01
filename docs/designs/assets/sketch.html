@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RealStage mockup v3 (DESIGN.md tokens)</title>
+<!-- Hi-fi reference mockup. Fonts and tokens match DESIGN.md exactly. Frames are side by side
+     for review only; the app uses the same components with the breakpoints in DESIGN.md. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,800&family=Instrument+Sans:wght@400;600&family=JetBrains+Mono&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#FFFFFF; --surface:#F5F6F8; --ink:#16181D; --ink-2:#5B6270; --line:#E4E6EB;
+    --accent:#0B6E4F; --accent-ink:#FFFFFF; --danger:#B42318; --focus:#0B6E4F;
+    --display:"Bricolage Grotesque", sans-serif; --ui:"Instrument Sans", sans-serif; --mono:"JetBrains Mono", monospace;
+  }
+  * { box-sizing:border-box; }
+  ::selection { background: rgb(11 110 79 / .18); }
+  body { margin:0; font:400 16px/24px var(--ui); color:var(--ink); background:#D9DCE1; padding:32px; caret-color:var(--accent); }
+  .label { font:400 13px/18px var(--mono); color:#2B2F36; margin:0 0 8px; }
+  .frame { background:var(--bg); border-radius:12px; overflow:hidden; margin:0 0 40px; position:relative; }
+  .desk { width:1280px; } .tab { width:900px; } .mob { width:390px; height:844px; }
+  header { display:flex; justify-content:space-between; align-items:center; padding:16px 32px; border-bottom:1px solid var(--line); }
+  .mark { font:800 22px/1 var(--display); letter-spacing:-.02em; } .mark span { color:var(--accent); }
+  .meta { font:400 13px/18px var(--mono); color:var(--ink-2); font-variant-numeric:tabular-nums; }
+  .well { background:var(--surface); border-radius:10px; display:flex; align-items:center; justify-content:center; color:var(--ink-2); font-size:14px; text-align:center; padding:8px; }
+  button, .file { font:600 15px/1 var(--ui); height:44px; padding:0 18px; border-radius:8px; border:1.5px solid var(--ink); background:#fff; color:var(--ink); cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:8px; }
+  button.pri, .file { background:var(--accent); border-color:var(--accent); color:var(--accent-ink); }
+  button:focus-visible, .file:focus-within, [role=radio]:focus-visible, input:focus-visible { outline:2px solid var(--focus); outline-offset:2px; }
+  .file input { position:absolute; width:1px; height:1px; opacity:0; }
+  h1 { font:800 44px/48px var(--display); letter-spacing:-.02em; margin:0 0 12px; }
+  h2 { font:600 16px/24px var(--ui); margin:0 0 12px; }
+  .sub { color:var(--ink-2); margin:0; }
+  /* Landing */
+  .land { display:grid; grid-template-columns:1.15fr 1fr; gap:48px; padding:64px; align-items:center; }
+  .drop { border:1.5px dashed var(--ink-2); border-radius:10px; padding:28px; margin:28px 0 16px; display:flex; flex-direction:column; align-items:flex-start; gap:10px; }
+  .samples { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  .samples button { height:56px; padding:0 14px; border:1.5px solid var(--line); font-weight:400; font-size:14px; }
+  .ba { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .ba figure { margin:0; } .ba .well { height:380px; } .ba figcaption { font-size:14px; color:var(--ink-2); margin-top:8px; }
+  /* Studio */
+  .studio { display:grid; grid-template-columns:minmax(0,1fr) 320px; gap:32px; padding:32px; }
+  .stage { height:520px; position:relative; }
+  .stage .tools { position:absolute; top:14px; right:14px; display:flex; gap:8px; }
+  .stage .chip { position:absolute; bottom:14px; right:14px; background:#fff; border-radius:6px; padding:6px 10px; font-size:14px; }
+  .opts { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-top:16px; }
+  [role=radio] { border:1.5px solid var(--line); border-radius:10px; padding:8px; cursor:pointer; text-align:left; background:#fff; }
+  [role=radio][aria-checked=true] { border:2px solid var(--ink); padding:7.5px; }
+  [role=radio] .well { height:128px; }
+  .opt-name { display:block; font:600 14px/20px var(--ui); margin-top:8px; }
+  .free { font-size:13px; color:var(--accent); font-weight:600; }
+  .gen { display:flex; gap:12px; margin-top:20px; align-items:flex-end; }
+  .gen label { flex:1; font-size:14px; font-weight:600; display:flex; flex-direction:column; gap:6px; }
+  .gen input { height:44px; border:1.5px solid var(--ink-2); border-radius:8px; padding:0 12px; font:400 16px var(--ui); }
+  .side .you { display:flex; gap:10px; align-items:center; margin-bottom:28px; }
+  .side .you .well { width:56px; height:56px; border-radius:6px; font-size:11px; }
+  .kit { list-style:none; padding:0; margin:0 0 16px; }
+  .kit li { display:grid; grid-template-columns:44px 1fr auto; gap:12px; align-items:center; padding:10px 0; border-bottom:1px solid var(--line); font-size:14px; }
+  .kit .well { width:44px; height:44px; border-radius:6px; font-size:11px; }
+  .kit a { color:var(--ink); text-underline-offset:3px; font-size:13px; }
+  .note { font-size:14px; color:var(--ink-2); margin:12px 0 0; }
+  .compare { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:12px; }
+  .compare .well { height:96px; font-size:12px; }
+  /* Tablet */
+  .t-body { padding:24px; } .t-stage { height:440px; position:relative; }
+  .t-lower { display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-top:24px; }
+  /* Mobile */
+  .m-body { padding:16px 16px 104px; }
+  .m-stage { aspect-ratio:4/5; position:relative; }
+  .m-opts { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:12px; }
+  .m-opts [role=radio] { padding:4px; } .m-opts .well { height:88px; }
+  .m-row { display:flex; gap:8px; margin-top:12px; } .m-row button { flex:1; padding:0 8px; font-size:14px; }
+  /* PRODUCTION: position:fixed (see mockup-mobile.html). absolute here only because frames share one review page. */
+  .bar { position:absolute; left:0; right:0; bottom:0; padding:12px 16px calc(12px + env(safe-area-inset-bottom)); background:#fff; border-top:1px solid var(--line); }
+  .bar button { width:100%; }
+  .badge { font:400 13px/18px var(--mono); color:var(--ink-2); }
+</style>
+</head>
+<body>
+
+<p class="label">FRAME 1 · Landing (≥1200 px) · HYBRID: one job, get a photo in. Samples for judges.</p>
+<section class="frame desk" aria-label="Landing">
+  <header><span class="mark">Real<span>Stage</span></span></header>
+  <div class="land">
+    <div>
+      <h1>Your real product.<br>Studio stages.<br>Every marketplace size.</h1>
+      <p class="sub">We never redraw your product. AI builds the scene around it.</p>
+      <div class="drop">
+        <label class="file">Upload a product photo<input type="file" accept="image/jpeg,image/png,image/webp,image/heic"></label>
+        <span class="note" style="margin:0">or drop it here · JPG, PNG, WebP, HEIC up to 10 MB</span>
+      </div>
+      <div class="samples"><span class="note" style="margin:0">No photo handy? Try a sample:</span>
+        <button>Steel tumbler</button><button>Saree</button><button>Pickle jar</button></div>
+    </div>
+    <div class="ba">
+      <figure><div class="well">real sample photo<br>tumbler on bedsheet</div><figcaption>Before · phone photo</figcaption></figure>
+      <figure><div class="well">same tumbler<br>on kota stone stage</div><figcaption>After · same pixels, new stage</figcaption></figure>
+    </div>
+  </div>
+</section>
+
+<p class="label">FRAME 2 · Studio (≥1200 px) · OPERATE: selected stage is the anchor; export on the right.</p>
+<section class="frame desk" aria-label="Studio">
+  <header><span class="mark">Real<span>Stage</span></span><span class="badge">AI credits left: 12 of 15</span></header>
+  <div class="studio">
+    <main>
+      <div class="well stage">selected stage · tumbler on kota stone, relit
+        <div class="tools"><button aria-pressed="false">Compare</button><button>Relight with AI · uses 1 of 15</button></div>
+        <div class="chip">Alignment 0.93 · real pixels locked</div>
+      </div>
+      <div class="opts" role="radiogroup" aria-label="Choose a stage">
+        <div role="radio" aria-checked="true" tabindex="0"><div class="well">kota stone</div><span class="opt-name">Kota stone</span><span class="meta">flux-2-klein-9b · seed 42</span><br><span class="free">Free to use</span></div>
+        <div role="radio" aria-checked="false" tabindex="-1"><div class="well">teak shelf</div><span class="opt-name">Teak shelf</span><span class="meta">nano-banana-1 · seed 7</span><br><span class="free">Free to use</span></div>
+        <div role="radio" aria-checked="false" tabindex="-1"><div class="well">terracotta</div><span class="opt-name">Terracotta</span><span class="meta">recraft-v3 · seed n/a</span><br><span class="free">Free to use</span></div>
+      </div>
+      <div class="gen">
+        <label>Describe a new stage<input placeholder="e.g. brass thali table, festive evening"></label>
+        <button>Generate 3 new stages · uses 3</button>
+      </div>
+    </main>
+    <aside class="side" aria-label="Product and export">
+      <div class="you"><div class="well">photo</div><div class="well">cutout</div><div><b style="font-size:14px">Your product</b><br><a href="#" style="font-size:13px;color:var(--ink);text-underline-offset:3px">New photo</a></div></div>
+      <h2>Export kit</h2>
+      <ul class="kit">
+        <li><div class="well">A</div><span>Amazon main · white</span><span class="meta">2000×2000 <a href="#">↓</a></span></li>
+        <li><div class="well">IG</div><span>Instagram post</span><span class="meta">1080×1350 <a href="#">↓</a></span></li>
+        <li><div class="well">ST</div><span>Story / Reel cover</span><span class="meta">1080×1920 <a href="#">↓</a></span></li>
+        <li><div class="well">WA</div><span>WhatsApp / Meesho</span><span class="meta">1080×1080 <a href="#">↓</a></span></li>
+      </ul>
+      <button class="pri" style="width:100%">Download all · 4 files</button>
+      <p class="note">Amazon main stays pure white. Marketplace rule, no AI scene.</p>
+    </aside>
+  </div>
+</section>
+
+<p class="label">FRAME 3 · Tablet (900 px) · stage + options, then product/compare | export.</p>
+<section class="frame tab" aria-label="Tablet studio">
+  <header style="padding:16px 24px"><span class="mark">Real<span>Stage</span></span><span class="badge">AI credits left: 12 of 15</span></header>
+  <div class="t-body">
+    <div class="well t-stage">selected stage<div class="tools" style="position:absolute;top:14px;right:14px;display:flex;gap:8px"><button aria-pressed="true">Compare</button><button>Relight with AI · uses 1</button></div></div>
+    <div class="opts" role="radiogroup" aria-label="Choose a stage">
+      <div role="radio" aria-checked="true" tabindex="0"><div class="well">kota stone</div><span class="opt-name">Kota stone</span><span class="meta">flux-2-klein-9b · seed 42</span></div>
+      <div role="radio" aria-checked="false" tabindex="-1"><div class="well">teak shelf</div><span class="opt-name">Teak shelf</span><span class="meta">nano-banana-1 · seed 7</span></div>
+      <div role="radio" aria-checked="false" tabindex="-1"><div class="well">terracotta</div><span class="opt-name">Terracotta</span><span class="meta">recraft-v3 · seed n/a</span></div>
+    </div>
+    <div class="t-lower">
+      <div><h2>Compare</h2><div class="compare"><div class="well">Your photo<br>(product crop)</div><div class="well">On stage<br>(same crop, same scale)</div></div></div>
+      <div><h2>Export kit</h2><p class="note" style="margin:0 0 12px">Amazon 2000² · Instagram 1080×1350 · Story 1080×1920 · WhatsApp 1080²</p><button class="pri" style="width:100%">Download all · 4 files</button></div>
+    </div>
+  </div>
+</section>
+
+<p class="label">FRAME 4 · Mobile (390 px) · fixed export bar with safe-area padding.</p>
+<section class="frame mob" aria-label="Mobile studio">
+  <header style="padding:12px 16px"><span class="mark" style="font-size:20px">Real<span>Stage</span></span><span class="badge">AI 12/15</span></header>
+  <div class="m-body">
+    <div class="well m-stage">selected stage (4:5)</div>
+    <div class="m-opts" role="radiogroup" aria-label="Choose a stage">
+      <div role="radio" aria-checked="true" tabindex="0"><div class="well">kota</div></div>
+      <div role="radio" aria-checked="false" tabindex="-1"><div class="well">teak</div></div>
+      <div role="radio" aria-checked="false" tabindex="-1"><div class="well">terracotta</div></div>
+    </div>
+    <p class="meta" style="margin:8px 0 0">Kota stone · flux-2-klein-9b · seed 42 · Free to use</p>
+    <div class="m-row"><button aria-pressed="false">Compare</button><button>Relight · 1</button><button>New · 3</button></div>
+    <p class="note">Kit: Amazon 2000² · Instagram · Story · WhatsApp</p>
+  </div>
+  <div class="bar"><button class="pri">Download all · 4 files</button></div>
+</section>
+
+</body>
+</html>
