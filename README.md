@@ -8,8 +8,10 @@ Upload one phone photo. Cloudinary cuts out your **real** product, places it on 
 > Runs entirely on Cloudinary's **free tier**: 50 image-generation credits, $0.
 
 - **Live demo:** `https://<your-vercel-url>` (set after deploy)
-- **Demo video:** `<link>`
+- **Demo video:** `<link>` (2:04, made in Remotion from the real live run: [video/](video/README.md))
 - **Planning and reviews:** [docs/README.md](docs/README.md)
+
+![RealStage: one real teapot photo on the same scene from 3 AI models, then Compare proving identical pixels](docs/media/realstage-demo.gif)
 
 ---
 

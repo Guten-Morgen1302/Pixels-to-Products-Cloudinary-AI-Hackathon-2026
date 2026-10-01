@@ -8,3 +8,8 @@ node_modules/
 .DS_Store
 .gstack/
 *.tsbuildinfo
+demo video/
+video/node_modules/
+video/out/
+video/public/clips/
+video/.env
