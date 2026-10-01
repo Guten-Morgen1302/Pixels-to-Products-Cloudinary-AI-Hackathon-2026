@@ -2,8 +2,14 @@
 import sharp from "sharp";
 import type { Box } from "./geometry";
 
+// Grayscale or gray+alpha PNGs (black-and-white products) would break channel indexing below.
+export async function rgba(buf: Buffer): Promise<Buffer> {
+  return sharp(buf).toColourspace("srgb").ensureAlpha().png().toBuffer();
+}
+
 // Opaque-pixel coverage of the trimmed cutout against the ORIGINAL frame (Round 3, R3-1: trim doesn't change the count).
-export async function cutoutCoverage(cutPng: Buffer, originalW: number, originalH: number): Promise<number> {
+export async function cutoutCoverage(cutPngIn: Buffer, originalW: number, originalH: number): Promise<number> {
+  const cutPng = await rgba(cutPngIn);
   const { data, info } = await sharp(cutPng).ensureAlpha().extractChannel(3).raw().toBuffer({ resolveWithObject: true });
   let opaque = 0;
   for (let i = 0; i < data.length; i++) if (data[i] > 127) opaque++;
@@ -12,7 +18,8 @@ export async function cutoutCoverage(cutPng: Buffer, originalW: number, original
 }
 
 // _core: alpha eroded ~2px and feathered 1px, same pixel dimensions as _cut (Eng E7 R2-1, edge handling).
-export async function makeCore(cutPng: Buffer): Promise<Buffer> {
+export async function makeCore(cutPngIn: Buffer): Promise<Buffer> {
+  const cutPng = await rgba(cutPngIn);
   const { width, height } = await sharp(cutPng).metadata();
   const rgb = await sharp(cutPng).removeAlpha().raw().toBuffer();
   const eroded = await sharp(cutPng).ensureAlpha().extractChannel(3).blur(1.5).threshold(250).blur(0.6).raw().toBuffer();
@@ -62,7 +69,8 @@ export function ncc(a: Float32Array, b: Float32Array, mask?: Uint8Array): number
 
 // Pixel-Lock gate (Eng E3): Sobel edge-map NCC inside the cutout mask eroded 4px, product box only, ≤512px.
 // Internal edges (labels, rims, weave) move when AI shifts the product, but survive relighting.
-export async function alignmentScore(composite: Buffer, relit: Buffer, cutPng: Buffer, stage: { w: number; h: number }, place: Box): Promise<number> {
+export async function alignmentScore(composite: Buffer, relit: Buffer, cutPngIn: Buffer, stage: { w: number; h: number }, place: Box): Promise<number> {
+  const cutPng = await rgba(cutPngIn);
   const scale = Math.min(1, 512 / Math.max(place.w, place.h));
   const w = Math.max(8, Math.round(place.w * scale));
   const h = Math.max(8, Math.round(place.h * scale));
@@ -74,9 +82,10 @@ export async function alignmentScore(composite: Buffer, relit: Buffer, cutPng: B
 
 // Amazon main: every background pixel ≥254 (JPEG-safe white). Background = outer padding band plus pixels that are
 // transparent in the cutout and at least ~16px away from the product (JPEG 4:2:0 chroma blocks are 16px, so colour ringing reaches that far; Eng R2-22).
-export async function whiteCheck(amazonJpg: Buffer, cutPng: Buffer): Promise<{ ok: boolean; minValue: number; checked: number }> {
-  const { data, info } = await sharp(amazonJpg).removeAlpha().raw().toBuffer({ resolveWithObject: true });
-  const W = info.width, H = info.height;
+export async function whiteCheck(amazonJpg: Buffer, cutPngIn: Buffer): Promise<{ ok: boolean; minValue: number; checked: number }> {
+  const cutPng = await rgba(cutPngIn);
+  const { data, info } = await sharp(amazonJpg).toColourspace("srgb").removeAlpha().raw().toBuffer({ resolveWithObject: true });
+  const W = info.width, H = info.height, ch = info.channels;
   const meta = await sharp(cutPng).metadata();
   const s = Math.min(1700 / meta.width!, 1700 / meta.height!);
   const fw = Math.round(meta.width! * s), fh = Math.round(meta.height! * s);
@@ -88,8 +97,8 @@ export async function whiteCheck(amazonJpg: Buffer, cutPng: Buffer): Promise<{ o
       const ix = x - ox, iy = y - oy;
       const inside = ix >= 0 && iy >= 0 && ix < fw && iy < fh;
       if (inside && alpha[iy * fw + ix] > 2) continue; // product or its ~16px halo zone
-      const p = (y * W + x) * 3;
-      const v = Math.min(data[p], data[p + 1], data[p + 2]);
+      const p = (y * W + x) * ch;
+      const v = ch >= 3 ? Math.min(data[p], data[p + 1], data[p + 2]) : data[p];
       if (v < min) min = v;
       checked++;
     }

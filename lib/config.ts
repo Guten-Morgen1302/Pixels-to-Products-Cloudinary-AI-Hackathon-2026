@@ -18,6 +18,7 @@ export function getConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const apiKey = m?.[1] ?? env.CLOUDINARY_API_KEY ?? "";
   const apiSecret = m?.[2] ?? env.CLOUDINARY_API_SECRET ?? "";
   if (!cloud || !apiKey || !apiSecret) throw new Error("Cloudinary credentials missing (CLOUDINARY_URL)");
+  if (!env.SESSION_SECRET || env.SESSION_SECRET.length < 32) throw new Error("SESSION_SECRET missing or shorter than 32 characters");
   return {
     cloud,
     apiKey,

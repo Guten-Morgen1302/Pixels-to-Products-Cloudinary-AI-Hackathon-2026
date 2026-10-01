@@ -12,8 +12,8 @@ export const ALLOWED_FORMATS = "jpg,jpeg,png,webp,heic,heif";
 const INCOMING = "c_limit,w_2400,h_2400,q_auto:good"; // caps stored originals at ~1 MB (X6)
 
 // Signed direct browser -> Cloudinary upload: one server-chosen public_id, overwrite:false (X6, E1).
-export async function signUpload(port: CloudPort, cfg: Config, sessionId: string) {
-  const r = await reserveUpload(port, cfg);
+export async function signUpload(port: CloudPort, cfg: Config, sessionId: string, visitor: string) {
+  const r = await reserveUpload(port, cfg, visitor);
   if (!r.ok) throw new AppError("BUDGET_PAUSED", "Uploads paused for today. Try a sample.", 503);
   const params = {
     public_id: `${sessionFolder(sessionId)}/${randomUUID().slice(0, 12)}`,
@@ -29,7 +29,7 @@ export async function signUpload(port: CloudPort, cfg: Config, sessionId: string
 export type CutoutResult = { original: { publicId: string; w: number; h: number }; cut: CutRef; coreId: string; coverage: number };
 
 // Materialize the canonical cutout as its own asset, check coverage, derive the Pixel-Lock core.
-export async function makeCutout(port: CloudPort, sessionId: string, originalId: string): Promise<CutoutResult> {
+export async function makeCutout(port: CloudPort, sessionId: string, originalId: string, visitor: string): Promise<CutoutResult> {
   if (!ownsAsset(sessionId, originalId)) throw new AppError("FORBIDDEN", MESSAGES.FORBIDDEN, 403);
   const original = await port.getResource(originalId);
   if (!original) throw new AppError("NOT_FOUND", MESSAGES.NOT_FOUND, 404);
@@ -54,8 +54,12 @@ export async function makeCutout(port: CloudPort, sessionId: string, originalId:
   }
   if (isSample) throw new AppError("NOT_FOUND", "This sample isn't ready yet.", 404);
 
-  const reserved = await reserveCutout(port);
-  if (!reserved.ok) throw new AppError("BUDGET_PAUSED", "Uploads paused for today. Try a sample.", 503);
+  // Reserve once per photo: client retries on PROCESSING must not burn extra cutout slots.
+  if (original.context?.rs_cut_paid !== "1") {
+    const reserved = await reserveCutout(port, visitor);
+    if (!reserved.ok) throw new AppError("BUDGET_PAUSED", "Uploads paused for today. Try a sample.", 503);
+    await port.update(originalId, { context: { rs_cut_paid: "1" } });
+  }
 
   const tags = ["realstage", `session-${sessionId}`, expTag()];
   let cut;

@@ -3,14 +3,14 @@
 import { randomInt, randomUUID } from "node:crypto";
 import type { CloudPort, GenAsset, GenResult } from "../cloud";
 import type { Config } from "../config";
-import { recordQuota, reserveGeneration } from "../budget";
+import { recordQuota, reserveGeneration, settleCost } from "../budget";
 import { placeProduct } from "../geometry";
 import { alignmentScore } from "../image-checks";
 import { ALIGN_THRESHOLD, DEFAULT_GEOMETRY, EDIT_MODEL, STAGE_MODELS, STAGE_RESOLUTION, stagePrompt } from "../models";
 import { expTag, ownsAsset, sessionFolder } from "../session";
 import { compositeSourceUrl, deliveryUrl, pixelLockSourceUrl, type CutRef, type StageRef } from "../urls";
 import { AppError, MESSAGES } from "./errors";
-import { libraryStages, stageContext, toStage, type StageInfo } from "./stages";
+import { libraryStages, resolveStage, stageContext, toStage, type StageInfo } from "./stages";
 
 const MOCK_DELAY_MS = 3000;
 export const GEN_PRESET = "realstage_gen";
@@ -32,18 +32,20 @@ const nameFromPrompt = (p: string) => p.split(/[,.]/)[0].split(" ").slice(0, 3).
 
 // ---- stages fan-out ---------------------------------------------------------------------------
 
-export async function startStages(port: CloudPort, cfg: Config, rawPrompt: unknown) {
+export async function startStages(port: CloudPort, cfg: Config, rawPrompt: unknown, visitor: string) {
   const prompt = cleanPrompt(rawPrompt);
   const credits = STAGE_MODELS.reduce((s, m) => s + m.credits, 0);
-  const r = await reserveGeneration(port, cfg, credits); // all 3 reserved before the first call (R2-3)
+  const r = await reserveGeneration(port, cfg, credits, visitor); // all 3 reserved before the first call (R2-3)
   if (!r.ok) throw new AppError("BUDGET_PAUSED", MESSAGES.BUDGET_PAUSED, 503);
 
   if (cfg.genMode === "mock") {
     const t = Date.now();
-    return { prompt, tasks: STAGE_MODELS.map((m, i) => ({ model: m.id, taskId: `mock:stage:${i}:${t}` })) };
+    return { prompt, tasks: STAGE_MODELS.map((m, i) => ({ model: m.id, taskId: `mock:stage:${i}:${t}`, error: undefined as string | undefined })) };
   }
   const tasks = await Promise.all(
     STAGE_MODELS.map(async (m) => {
+      // One model failing (even a network throw) must not lose the other two tasks.
+      try {
       const res = await port.generate("text_to_image", {
         prompt: stagePrompt(prompt),
         model: { id: m.id },
@@ -53,7 +55,11 @@ export async function startStages(port: CloudPort, cfg: Config, rawPrompt: unkno
         target: { target_type: "managed_asset", upload_preset: GEN_PRESET },
       });
       await recordQuota(port, res.quotaRemaining);
-      return { model: m.id, taskId: res.taskId ?? "", error: res.status === "failed" ? genError(res).code : undefined };
+      if (res.status === "failed" || !res.taskId) return { model: m.id, taskId: "", error: res.status === "failed" ? genError(res).code : "GEN_FAILED" };
+      return { model: m.id, taskId: res.taskId, error: undefined as string | undefined };
+      } catch {
+        return { model: m.id, taskId: "", error: "GEN_FAILED" as string | undefined };
+      }
     }),
   );
   return { prompt, tasks };
@@ -74,6 +80,7 @@ export async function pollStage(port: CloudPort, cfg: Config, sessionId: string,
   if (res.status === "pending") return { status: "pending" };
   if (res.status === "failed" || !res.assets?.length) throw genError(res);
   const a: GenAsset = res.assets[0];
+  await settleCost(port, res.usedByRequest, STAGE_MODELS.find((m) => m.id === a.modelId)?.credits ?? 1);
   const info = { name: nameFromPrompt(prompt), model: a.modelId, seed: a.seed || null, geometry: DEFAULT_GEOMETRY, prompt };
   // X14: tags + geometry before the card is ever shown.
   await port.update(a.publicId, { tags: ["realstage", "stage", `session-${sessionId}`, expTag()], context: stageContext(info) });
@@ -86,20 +93,24 @@ export async function pollStage(port: CloudPort, cfg: Config, sessionId: string,
 
 export type RelightInput = { stage: StageRef; cut: CutRef; coreId: string };
 
-function assertRelightInput(sessionId: string, i: RelightInput) {
-  const ok =
-    i?.stage?.publicId?.startsWith("realstage/") &&
-    ownsAsset(sessionId, i?.cut?.publicId ?? "") &&
-    i.coreId === i.cut.publicId.replace(/_cut$/, "_core") &&
-    i.stage.w > 0 && i.stage.h > 0 && i.cut.w > 0 && i.cut.h > 0;
-  if (!ok) throw new AppError("BAD_REQUEST", MESSAGES.BAD_REQUEST);
+// Resolve stage + cut from Cloudinary, ignoring client-sent sizes and geometry (they drive URLs and sharp extracts).
+async function resolveRelightInput(port: CloudPort, sessionId: string, i: RelightInput): Promise<RelightInput> {
+  const cutId = i?.cut?.publicId;
+  if (typeof cutId !== "string" || !ownsAsset(sessionId, cutId) || !cutId.endsWith("_cut")) throw new AppError("BAD_REQUEST", MESSAGES.BAD_REQUEST);
+  const [stage, cut] = await Promise.all([resolveStage(port, sessionId, i?.stage?.publicId), port.getResource(cutId)]);
+  if (!stage || !cut || !cut.width || !cut.height) throw new AppError("BAD_REQUEST", MESSAGES.BAD_REQUEST);
+  return {
+    stage: { publicId: stage.publicId, w: stage.w, h: stage.h, geometry: stage.geometry },
+    cut: { publicId: cutId, w: cut.width, h: cut.height },
+    coreId: cutId.replace(/_cut$/, "_core"),
+  };
 }
 
 // pool "build" is only for operator scripts (bake-off), which guard spend against remaining quota themselves (X2).
-export async function startRelight(port: CloudPort, cfg: Config, sessionId: string, input: RelightInput, pool: "prod" | "build" = "prod") {
-  assertRelightInput(sessionId, input);
+export async function startRelight(port: CloudPort, cfg: Config, sessionId: string, rawInput: RelightInput, visitor: string, pool: "prod" | "build" = "prod") {
+  const input = await resolveRelightInput(port, sessionId, rawInput);
   if (pool === "prod") {
-    const r = await reserveGeneration(port, cfg, EDIT_MODEL.credits);
+    const r = await reserveGeneration(port, cfg, EDIT_MODEL.credits, visitor);
     if (!r.ok) throw new AppError("BUDGET_PAUSED", MESSAGES.BUDGET_PAUSED, 503);
   }
   const compositeId = `${sessionFolder(sessionId)}/comp-${randomUUID().slice(0, 12)}`;
@@ -125,8 +136,8 @@ export async function startRelight(port: CloudPort, cfg: Config, sessionId: stri
 
 export type RelightOutcome = { status: "pending" } | { status: "done"; finalId: string; alignment: number | null; fallback: boolean };
 
-export async function pollRelight(port: CloudPort, cfg: Config, sessionId: string, taskId: string, compositeId: string, input: RelightInput): Promise<RelightOutcome> {
-  assertRelightInput(sessionId, input);
+export async function pollRelight(port: CloudPort, cfg: Config, sessionId: string, taskId: string, compositeId: string, rawInput: RelightInput): Promise<RelightOutcome> {
+  const input = await resolveRelightInput(port, sessionId, rawInput);
   if (!ownsAsset(sessionId, compositeId)) throw new AppError("FORBIDDEN", MESSAGES.FORBIDDEN, 403);
   let relitId: string;
   let relitSize: { w: number; h: number };
@@ -140,6 +151,7 @@ export async function pollRelight(port: CloudPort, cfg: Config, sessionId: strin
     await recordQuota(port, res.quotaRemaining);
     if (res.status === "pending") return { status: "pending" };
     if (res.status === "failed" || !res.assets?.length) throw genError(res);
+    await settleCost(port, res.usedByRequest, EDIT_MODEL.credits);
     relitId = res.assets[0].publicId;
     relitSize = { w: res.assets[0].width, h: res.assets[0].height };
     await port.update(relitId, { tags: ["realstage", `session-${sessionId}`, expTag()] }).catch(() => undefined);

@@ -67,15 +67,34 @@ export async function libraryStages(port: CloudPort): Promise<{ stages: StageInf
   }
 }
 
+const sessionCache = new Map<string, { at: number; stages: StageInfo[] }>();
+
+// Cached 10 s per session to stay inside the Free plan's Admin API budget (500 calls/hour).
 export async function sessionStages(port: CloudPort, sessionId: string): Promise<StageInfo[]> {
+  const hit = sessionCache.get(sessionId);
+  if (hit && Date.now() - hit.at < 10_000) return hit.stages;
   try {
     const assets = await port.listTag(`session-${sessionId}`);
-    return assets.filter((a) => a.tags.includes("stage")).map((a) => toStage(a, false)).filter((s): s is StageInfo => !!s);
+    const stages = assets.filter((a) => a.tags.includes("stage")).map((a) => toStage(a, false)).filter((s): s is StageInfo => !!s);
+    sessionCache.set(sessionId, { at: Date.now(), stages });
+    if (sessionCache.size > 500) sessionCache.delete(sessionCache.keys().next().value!);
+    return stages;
   } catch {
     return [];
   }
 }
 
+// Server-side source of truth for a stage: never trust client-sent size or geometry. A session may use library
+// stages and its own generated stages only.
+export async function resolveStage(port: CloudPort, sessionId: string, publicId: unknown): Promise<StageInfo | null> {
+  if (typeof publicId !== "string" || !publicId.startsWith("realstage/")) return null;
+  const a = await port.getResource(publicId);
+  if (!a) return null;
+  const allowed = a.tags.includes("lib") || (a.tags.includes("stage") && a.tags.includes(`session-${sessionId}`));
+  return allowed ? toStage(a, a.tags.includes("lib")) : null;
+}
+
 export function resetStageCache() {
   libCache = null;
+  sessionCache.clear();
 }

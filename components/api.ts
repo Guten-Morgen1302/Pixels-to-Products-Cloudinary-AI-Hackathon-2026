@@ -48,7 +48,12 @@ export function uploadToCloudinary(file: File, signed: Record<string, string | n
     xhr.open("POST", `https://api.cloudinary.com/v1_1/${signed.cloudName}/image/upload`);
     xhr.upload.onprogress = (e) => e.lengthComputable && onProgress(Math.round((e.loaded / e.total) * 100));
     xhr.onload = () => {
-      const json = JSON.parse(xhr.responseText || "{}");
+      let json: any = {};
+      try {
+        json = JSON.parse(xhr.responseText || "{}");
+      } catch {
+        /* non-JSON error page */
+      }
       if (xhr.status === 200) resolve(json);
       else if (/format|invalid image/i.test(json?.error?.message ?? "")) reject(new ApiError("NOT_A_PHOTO", "That file isn't a photo."));
       else if (/size|too large/i.test(json?.error?.message ?? "")) reject(new ApiError("TOO_LARGE", "Photos up to 10 MB, please."));

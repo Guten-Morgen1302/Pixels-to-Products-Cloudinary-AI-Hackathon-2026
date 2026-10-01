@@ -41,14 +41,14 @@ describe("session", () => {
 describe("signUpload", () => {
   it("signs only server-chosen params, one public_id in the session folder, overwrite false", async () => {
     const c = fakeCloud();
-    const u = await signUpload(c, cfg, SID);
+    const u = await signUpload(c, cfg, SID, "v");
     expect(u.public_id.startsWith(`realstage/u/${SID}/`)).toBe(true);
     expect(u.overwrite).toBe("false");
     expect(u.signature).toBe("sig(allowed_formats,overwrite,public_id,tags,transformation)");
     expect(c.raw.has("realstage/ledger/sign-001")).toBe(true);
   });
   it("refuses when uploads are off", async () => {
-    await expect(signUpload(fakeCloud(), { ...cfg, liveUploads: false }, SID)).rejects.toMatchObject({ code: "BUDGET_PAUSED" });
+    await expect(signUpload(fakeCloud(), { ...cfg, liveUploads: false }, SID, "v")).rejects.toMatchObject({ code: "BUDGET_PAUSED" });
   });
 });
 
@@ -56,25 +56,25 @@ describe("makeCutout", () => {
   const orig = `realstage/u/${SID}/p1`;
 
   it("rejects another session's photo", async () => {
-    await expect(makeCutout(fakeCloud(), SID, `realstage/u/${"c".repeat(24)}/p1`)).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(makeCutout(fakeCloud(), SID, `realstage/u/${"c".repeat(24)}/p1`, "v")).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
   it("deletes an oversized original", async () => {
     const c = fakeCloud([asset(orig, { bytes: 11 * 1024 * 1024 })]);
-    await expect(makeCutout(c, SID, orig)).rejects.toMatchObject({ code: "TOO_LARGE" });
+    await expect(makeCutout(c, SID, orig, "v")).rejects.toMatchObject({ code: "TOO_LARGE" });
     expect(c.assets.has(orig)).toBe(false);
   });
 
   it("rejects a cutout with no product", async () => {
     const c = fakeCloud([asset(orig)]);
     c.buffers.set("f_png/" + orig + "_cut", { status: 200, buf: await png(100, 100, false) });
-    await expect(makeCutout(c, SID, orig)).rejects.toMatchObject({ code: "NO_PRODUCT" });
+    await expect(makeCutout(c, SID, orig, "v")).rejects.toMatchObject({ code: "NO_PRODUCT" });
   });
 
   it("materializes _cut from the canonical string and builds _core", async () => {
     const c = fakeCloud([asset(orig)]);
     c.buffers.set("f_png/" + orig + "_cut", { status: 200, buf: await png(600, 600, true) });
-    const r = await makeCutout(c, SID, orig);
+    const r = await makeCutout(c, SID, orig, "v");
     expect(r.cut.publicId).toBe(`${orig}_cut`);
     expect(c.assets.get(`${orig}_cut`)!.context.src).toContain("e_background_removal/e_trim/f_png");
     expect(c.assets.has(`${orig}_core`)).toBe(true);
@@ -84,7 +84,7 @@ describe("makeCutout", () => {
   it("samples use pre-made cutouts without spending the cutout pool", async () => {
     const s = "realstage/samples/tumbler";
     const c = fakeCloud([asset(s), asset(`${s}_cut`, { width: 400, height: 800 }), asset(`${s}_core`)]);
-    const r = await makeCutout(c, SID, s);
+    const r = await makeCutout(c, SID, s, "v");
     expect(r.cut).toEqual({ publicId: `${s}_cut`, w: 400, h: 800 });
     expect(c.raw.size).toBe(0);
   });
@@ -105,7 +105,7 @@ describe("stages", () => {
 describe("generation", () => {
   it("mock fan-out never calls /v2/generate and returns library stages after the delay", async () => {
     const c = fakeCloud([libStage]);
-    const r = await startStages(c, cfg, "teak shelf, morning light");
+    const r = await startStages(c, cfg, "teak shelf, morning light", "v");
     expect(r.tasks).toHaveLength(3);
     expect(c.generated).toHaveLength(0);
     expect(await pollStage(c, cfg, SID, r.tasks[0].taskId, r.prompt)).toEqual({ status: "pending" });
@@ -116,16 +116,16 @@ describe("generation", () => {
 
   it("live fan-out reserves 3 credits up front and sends the documented body", async () => {
     const c = fakeCloud();
-    await startStages(c, live, "teak shelf");
-    expect(c.raw.size).toBe(3);
+    await startStages(c, live, "teak shelf", "v");
+    expect([...c.raw].filter((k) => k.startsWith("realstage/ledger/prod-"))).toHaveLength(3);
     expect(c.generated).toHaveLength(3);
     expect(c.generated[0]).toMatchObject({ kind: "text_to_image", body: { async: true, image_size: { aspect_ratio: "1:1", resolution: "1K" }, target: { upload_preset: "realstage_gen" } } });
   });
 
   it("live relight sends the composite as reference [1] by managed asset id", async () => {
-    const c = fakeCloud();
+    const c = fakeCloud([libStage, asset(`realstage/u/${SID}/p1_cut`, { width: 500, height: 500 })]);
     const input = { stage: { publicId: "realstage/lib/kota", w: 1024, h: 1024, geometry: { anchorX: 0.5, floorY: 0.8, maxW: 0.5, maxH: 0.6 } }, cut: { publicId: `realstage/u/${SID}/p1_cut`, w: 500, h: 500 }, coreId: `realstage/u/${SID}/p1_core` };
-    const r = await startRelight(c, live, SID, input);
+    const r = await startRelight(c, live, SID, input, "v");
     const body = c.generated[0].body as any;
     expect(body.prompt).toContain("[1]");
     expect(body.reference_images).toEqual([{ source_type: "managed_asset", asset_id: `aid-${r.compositeId}` }]);
@@ -133,7 +133,7 @@ describe("generation", () => {
   });
 
   it("relight falls back to the exact composite when the output aspect drifts", async () => {
-    const c = fakeCloud();
+    const c = fakeCloud([libStage, asset(`realstage/u/${SID}/p1_cut`, { width: 500, height: 500 })]);
     c.task = async () => ({ status: "done", assets: [{ publicId: "realstage/stages/r1", assetId: "x", width: 1024, height: 768, modelId: "m", seed: 1 }] });
     const input = { stage: { publicId: "realstage/lib/kota", w: 1024, h: 1024, geometry: { anchorX: 0.5, floorY: 0.8, maxW: 0.5, maxH: 0.6 } }, cut: { publicId: `realstage/u/${SID}/p1_cut`, w: 500, h: 500 }, coreId: `realstage/u/${SID}/p1_core` };
     const r = await pollRelight(c, live, SID, "t1", `realstage/u/${SID}/comp-1`, input);
@@ -155,7 +155,7 @@ describe("generation", () => {
 
 describe("kit", () => {
   it("materializes a final, returns 4 files, flags a failed white check", async () => {
-    const c = fakeCloud();
+    const c = fakeCloud([libStage, asset(`realstage/u/${SID}/p1_cut`, { width: 500, height: 500 })]);
     const input = { stage: { publicId: "realstage/lib/kota", w: 1024, h: 1024, geometry: { anchorX: 0.5, floorY: 0.8, maxW: 0.5, maxH: 0.6 }, name: "Kota", model: "flux-2-klein-9b" }, cut: { publicId: `realstage/u/${SID}/p1_cut`, w: 500, h: 500 }, productName: "jar" };
     const k = await makeKit(c, SID, input);
     expect(k.files).toHaveLength(4);
@@ -174,5 +174,62 @@ describe("cleanup", () => {
     const r = await deleteExpired(c, now);
     expect(r.deleted).toBe(1);
     expect(c.assets.has("future")).toBe(true);
+  });
+});
+
+describe("review fixes (regressions)", () => {
+  const cutA = asset(`realstage/u/${SID}/p1_cut`, { width: 500, height: 500 });
+  const input = (stageId: string, extra: object = {}) => ({ stage: { publicId: stageId, w: 99999, h: 1, geometry: { anchorX: 0.5, floorY: 0.8, maxW: 5, maxH: 0.6 }, ...extra }, cut: { publicId: cutA.publicId, w: 1, h: 1 }, coreId: `realstage/u/${SID}/p1_core` });
+
+  it("relight ignores client-sent stage size/geometry and uses the server's", async () => {
+    const c = fakeCloud([libStage, cutA]);
+    await startRelight(c, live, SID, input("realstage/lib/kota") as any, "v");
+    expect((c.generated[0].body as any).image_size).toEqual({ width: 1024, height: 1024 });
+  });
+
+  it("relight refuses another session's stage and a stage that is not lib/own", async () => {
+    const other = asset(`realstage/stages/x`, { tags: ["stage", `session-${"c".repeat(24)}`] });
+    const c = fakeCloud([libStage, cutA, other]);
+    await expect(startRelight(c, live, SID, input(other.publicId) as any, "v")).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(c.generated).toHaveLength(0);
+  });
+
+  it("kit refuses an unknown stage", async () => {
+    const c = fakeCloud([cutA]);
+    await expect(makeKit(c, SID, { stage: { publicId: "realstage/nope", w: 1, h: 1, geometry: { anchorX: 0.5, floorY: 0.8, maxW: 0.5, maxH: 0.6 }, name: "", model: "" }, cut: { publicId: cutA.publicId, w: 1, h: 1 }, productName: "x" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("cutout retries after PROCESSING reserve the cutout slot only once", async () => {
+    const orig = `realstage/u/${SID}/p2`;
+    const c = fakeCloud([asset(orig)]);
+    const realUpload = c.uploadFromUrl;
+    let calls = 0;
+    c.uploadFromUrl = async (url, o) => { if (++calls === 1) throw new Error("423 still processing"); return realUpload(url, o); };
+    c.buffers.set("f_png/" + orig + "_cut", { status: 200, buf: await png(600, 600, true) });
+    await expect(makeCutout(c, SID, orig, "v")).rejects.toMatchObject({ code: "PROCESSING" });
+    await makeCutout(c, SID, orig, "v");
+    expect([...c.raw].filter((k) => k.startsWith("realstage/ledger/cut-"))).toHaveLength(1);
+  });
+
+  it("one model throwing does not lose the other two tasks", async () => {
+    const c = fakeCloud();
+    let n = 0;
+    c.generate = async () => { if (++n === 2) throw new Error("network"); return { status: "pending", taskId: `t${n}` }; };
+    const r = await startStages(c, live, "teak shelf", "v");
+    expect(r.tasks.map((t) => Boolean(t.taskId))).toEqual([true, false, true]);
+    expect(r.tasks[1].error).toBe("GEN_FAILED");
+  });
+
+  it("a finished task with no images is failed, not pending forever", () => {
+    expect(parseGen({ data: { status: "completed", result: { assets: [] } } }).status).toBe("failed");
+    expect(parseGen({ data: { status: "processing" } }).status).toBe("pending");
+  });
+
+  it("image checks accept grayscale PNGs", async () => {
+    const { cutoutCoverage, makeCore } = await import("@/lib/image-checks");
+    const gray = await sharp({ create: { width: 50, height: 50, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 1 } } }).toColourspace("b-w").png().toBuffer();
+    expect((await sharp(gray).metadata()).channels).toBeLessThan(3); // really gray(+alpha)
+    expect(await cutoutCoverage(gray, 50, 50)).toBeGreaterThan(0.9);
+    await expect(makeCore(gray)).resolves.toBeInstanceOf(Buffer);
   });
 });

@@ -32,11 +32,11 @@ const LIMIT = Number(process.env.BAKEOFF_SAMPLES ?? 3);
   const rows: string[] = [];
   for (const [i, s] of samples.entries()) {
     const stage = stages[i % stages.length];
-    const cut = await makeCutout(port, SID, s.publicId);
+    const cut = await makeCutout(port, SID, s.publicId, "bakeoff");
     const input = { stage: { publicId: stage.publicId, w: stage.w, h: stage.h, geometry: stage.geometry }, cut: cut.cut, coreId: cut.coreId };
     const t0 = Date.now();
     // Bake-off bypasses the production pool on purpose (build pool); it is guarded above by remaining quota.
-    const start = await startRelight(port, cfg, SID, input, "build").catch((e) => ({ error: e.message }) as any);
+    const start = await startRelight(port, cfg, SID, input, "bakeoff", "build").catch((e) => ({ error: e.message }) as any);
     if ("error" in start) { rows.push(`| ${s.context.rs_name} | ${stage.name} | — | — | — | error: ${start.error} |`); continue; }
     let out: any = { status: "pending" };
     while (out.status === "pending" && Date.now() - t0 < 120_000) {

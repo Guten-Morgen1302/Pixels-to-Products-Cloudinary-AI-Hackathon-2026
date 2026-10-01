@@ -4,6 +4,7 @@ import { whiteCheck } from "../image-checks";
 import { expTag, ownsAsset, sessionFolder } from "../session";
 import { compositeSourceUrl, deliveryUrl, kitFiles, type CutRef, type KitFile, type StageRef } from "../urls";
 import { AppError, MESSAGES } from "./errors";
+import { resolveStage } from "./stages";
 
 export type KitInput = { stage: StageRef & { name: string; model: string }; cut: CutRef; relitFinalId?: string; productName: string; alignment?: number | null };
 export type KitResult = { finalId: string; files: KitFile[]; amazonOk: boolean };
@@ -24,11 +25,19 @@ async function tagFinal(port: CloudPort, finalId: string, input: KitInput) {
 
 // Materialize the chosen look as `final`, then derive the 4 kit files as fl_attachment URLs of it (X4, X7):
 // kit files are not stored assets, so deleting `final` (exp tag) deletes them too.
-export async function makeKit(port: CloudPort, sessionId: string, input: KitInput): Promise<KitResult> {
-  if (!ownsAsset(sessionId, input.cut?.publicId ?? "") || !input.stage?.publicId?.startsWith("realstage/")) {
-    throw new AppError("FORBIDDEN", MESSAGES.FORBIDDEN, 403);
-  }
-  if (input.relitFinalId && !ownsAsset(sessionId, input.relitFinalId)) throw new AppError("FORBIDDEN", MESSAGES.FORBIDDEN, 403);
+export async function makeKit(port: CloudPort, sessionId: string, raw: KitInput): Promise<KitResult> {
+  const cutId = raw?.cut?.publicId;
+  if (typeof cutId !== "string" || !ownsAsset(sessionId, cutId)) throw new AppError("FORBIDDEN", MESSAGES.FORBIDDEN, 403);
+  if (raw.relitFinalId && !ownsAsset(sessionId, raw.relitFinalId)) throw new AppError("FORBIDDEN", MESSAGES.FORBIDDEN, 403);
+  // Never trust client-sent stage size/geometry or cut size.
+  const [stage, cutAsset] = await Promise.all([resolveStage(port, sessionId, raw?.stage?.publicId), port.getResource(cutId)]);
+  if (!stage || !cutAsset) throw new AppError("FORBIDDEN", MESSAGES.FORBIDDEN, 403);
+  const input: KitInput = {
+    ...raw,
+    stage: { publicId: stage.publicId, w: stage.w, h: stage.h, geometry: stage.geometry, name: stage.name, model: stage.model },
+    cut: { publicId: cutId, w: cutAsset.width, h: cutAsset.height },
+    productName: String(raw.productName ?? "product").slice(0, 80),
+  };
 
   const tags = ["realstage", `session-${sessionId}`, expTag()];
   let finalId = input.relitFinalId;

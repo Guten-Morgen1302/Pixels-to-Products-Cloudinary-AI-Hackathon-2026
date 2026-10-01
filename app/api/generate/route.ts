@@ -12,15 +12,15 @@ type Req =
   | { action: "poll-relight"; taskId: string; compositeId: string; input: RelightInput };
 
 export async function POST(req: Request) {
-  return handle("generate", async ({ sid, cfg, port }) => {
+  return handle("generate", async ({ sid, visitor, cfg, port }) => {
     const b = await body<Req>(req);
     switch (b?.action) {
       case "stages":
-        return await startStages(port, cfg, b.prompt);
+        return await startStages(port, cfg, b.prompt, visitor);
       case "poll-stage":
         return await pollStage(port, cfg, sid, String(b.taskId ?? ""), String(b.prompt ?? ""));
       case "relight":
-        return await startRelight(port, cfg, sid, b.input);
+        return await startRelight(port, cfg, sid, b.input, visitor);
       case "poll-relight":
         return await pollRelight(port, cfg, sid, String(b.taskId ?? ""), String(b.compositeId ?? ""), b.input);
       default:

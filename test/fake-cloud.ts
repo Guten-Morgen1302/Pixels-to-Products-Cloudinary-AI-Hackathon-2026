@@ -61,7 +61,8 @@ export function fakeCloud(seed: Asset[] = []): FakeCloud {
       if (o.tags) a.tags = [...new Set([...a.tags, ...o.tags])];
       if (o.context) a.context = { ...a.context, ...o.context };
     },
-    async destroy(id: string) {
+    async destroy(id: string, type = "image") {
+      if (type === "raw") { raw.delete(id); rawMeta.delete(id); return; }
       assets.delete(id);
     },
     async deleteByTag(tag: string) {

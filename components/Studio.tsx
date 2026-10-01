@@ -49,6 +49,9 @@ export default function Studio() {
   const [kit, setKit] = useState<KitState>({ status: "idle" });
   const [now, setNow] = useState(Date.now());
   const seq = useRef(0);
+  const genBusy = useRef(false); // synchronous double-submit guard: set before the first await
+  const kitSeq = useRef(0); // invalidates in-flight /api/kit results when the look changes
+  const [genStarting, setGenStarting] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
@@ -74,6 +77,7 @@ export default function Studio() {
   const relitFinal = relight?.status === "relit" ? relight.finalId : undefined;
 
   useEffect(() => {
+    kitSeq.current++;
     setKit({ status: "idle" });
     setCompare(false);
   }, [selected?.publicId, relitFinal, product?.cut.publicId]);
@@ -181,13 +185,17 @@ export default function Studio() {
   // ---------- 3-model fan-out (Track 2 proof) ----------
   async function onGenerate(e: React.FormEvent) {
     e.preventDefault();
-    if (gen?.cards.some((c) => c.status === "pending")) return; // double-submit guard
+    if (genBusy.current) return;
+    genBusy.current = true;
+    setGenStarting(true);
     setGenError(null);
+    const mySeq = seq.current;
     try {
       const start = await api<{ prompt: string; tasks: { model: string; taskId: string; error?: string }[] }>("/api/generate", { action: "stages", prompt });
       const cards: GenCard[] = start.tasks.map((t) => ({ model: t.model, status: t.error ? "error" : "pending", message: t.error ? "This model didn't respond." : undefined }));
+      if (mySeq !== seq.current) return;
       setGen({ prompt: start.prompt, cards });
-      const mySeq = seq.current;
+      setGenStarting(false);
       await Promise.all(
         start.tasks.map(async (t, i) => {
           if (t.error) return;
@@ -196,6 +204,7 @@ export default function Studio() {
               const p = await api<{ status: string; stage?: StageInfo }>("/api/generate", { action: "poll-stage", taskId: t.taskId, prompt: start.prompt });
               return p.status === "done" ? p.stage! : null;
             }, { cancelled: () => mySeq !== seq.current });
+            if (mySeq !== seq.current) return;
             setGen((g) => (g ? { ...g, cards: g.cards.map((c, j) => (j === i ? { ...c, status: "done", stage: r } : c)) } : g));
             setGenerated((list) => {
               const next = [r, ...list.filter((s) => s.publicId !== r.publicId)];
@@ -209,8 +218,10 @@ export default function Studio() {
         }),
       );
     } catch (err) {
-      setGenError(err instanceof ApiError ? err.message : "Something went wrong on our side. Try again.");
+      if (mySeq === seq.current) setGenError(err instanceof ApiError ? err.message : "Something went wrong on our side. Try again.");
     } finally {
+      genBusy.current = false;
+      setGenStarting(false);
       void refresh();
     }
   }
@@ -218,6 +229,8 @@ export default function Studio() {
   // ---------- kit ----------
   async function onDownloadAll() {
     if (!app || !product || !selected) return;
+    const myKit = ++kitSeq.current;
+    const live = () => myKit === kitSeq.current;
     setKit({ status: "preparing", done: 0 });
     try {
       const r = await api<{ kit: { files: KitFile[]; amazonOk: boolean } }>("/api/kit", {
@@ -237,10 +250,11 @@ export default function Studio() {
             if (!res.ok) throw new Error(String(res.status));
             const name = /fl_attachment:([^/]+)/.exec(f.download)?.[1] ?? f.key;
             zip.file(`${name}.jpg`, await res.blob());
-            setKit({ status: "preparing", done: ++done });
+            if (live()) setKit({ status: "preparing", done: ++done });
           }),
         );
         const blob = await zip.generateAsync({ type: "blob" });
+        if (!live()) return;
         const a = document.createElement("a");
         a.href = URL.createObjectURL(blob);
         a.download = `realstage-${slugify(product.name)}-kit.zip`;
@@ -251,10 +265,10 @@ export default function Studio() {
         setKit({ status: "ready", files: r.kit.files, amazonOk: r.kit.amazonOk, downloaded: true });
       } catch {
         // Zip failed (network/CORS): the 4 individual links still work.
-        setKit({ status: "ready", files: r.kit.files, amazonOk: r.kit.amazonOk, downloaded: false });
+        if (live()) setKit({ status: "ready", files: r.kit.files, amazonOk: r.kit.amazonOk, downloaded: false });
       }
     } catch (e) {
-      setKit({ status: "error", message: e instanceof ApiError ? e.message : "Something went wrong on our side. Try again." });
+      if (live()) setKit({ status: "error", message: e instanceof ApiError ? e.message : "Something went wrong on our side. Try again." });
     }
   }
 
@@ -303,7 +317,13 @@ export default function Studio() {
   const aiOn = !!ai?.on;
   const canFanOut = aiOn && (ai?.mock || (ai?.creditsLeft ?? 0) >= 3);
   const pausedMsg = "Live AI paused to save credits. Library stages still work.";
-  const generating = !!gen?.cards.some((c) => c.status === "pending");
+  const generating = genStarting || !!gen?.cards.some((c) => c.status === "pending");
+  // One list drives both rendering and keyboard navigation (cards while generating, otherwise the strip).
+  const rendered: GenCard[] = gen?.cards.some((c) => c.status === "pending")
+    ? gen.cards
+    : strip.map((s) => ({ model: s.model, status: "done" as const, stage: s }));
+  const selectable = rendered.filter((c) => c.stage).map((c) => c.stage!);
+  const anyChecked = selectable.some((s) => s.publicId === selected?.publicId);
 
   const previews = selected
     ? [
@@ -316,11 +336,11 @@ export default function Studio() {
     : [];
 
   const onKeyRadio = (e: React.KeyboardEvent) => {
-    const i = strip.findIndex((s) => s.publicId === selected?.publicId);
+    const i = selectable.findIndex((s) => s.publicId === selected?.publicId);
     const d = e.key === "ArrowRight" || e.key === "ArrowDown" ? 1 : e.key === "ArrowLeft" || e.key === "ArrowUp" ? -1 : 0;
-    if (!d || !strip.length) return;
+    if (!d || !selectable.length) return;
     e.preventDefault();
-    const next = strip[(i + d + strip.length) % strip.length];
+    const next = selectable[(i + d + selectable.length) % selectable.length];
     setSelectedId(next.publicId);
     (document.getElementById(`opt-${next.publicId}`) as HTMLElement | null)?.focus();
   };
@@ -372,7 +392,7 @@ export default function Studio() {
           )}
 
           <div className="opts" role="radiogroup" aria-label="Choose a stage" onKeyDown={onKeyRadio}>
-            {(generating ? gen!.cards : strip.map((s) => ({ model: s.model, status: "done" as const, stage: s, message: undefined }))).map((c, i) => {
+            {rendered.map((c, i) => {
               const s = c.stage;
               const checked = !!s && s.publicId === selected?.publicId;
               return (
@@ -383,7 +403,7 @@ export default function Studio() {
                   role="radio"
                   aria-checked={checked}
                   aria-disabled={!s}
-                  tabIndex={checked || (!selected && i === 0) ? 0 : -1}
+                  tabIndex={checked || (!anyChecked && s?.publicId === selectable[0]?.publicId) ? 0 : -1}
                   onClick={() => s && setSelectedId(s.publicId)}
                 >
                   <div className="well">

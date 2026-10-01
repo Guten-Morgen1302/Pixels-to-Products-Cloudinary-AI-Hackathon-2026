@@ -66,7 +66,7 @@ export function parseGen(json: any): GenResult {
   }));
   const status = String(data.status ?? (assets.length ? "completed" : "pending")).toLowerCase();
   return {
-    status: assets.length ? "done" : /fail|error/.test(status) ? "failed" : "pending",
+    status: assets.length ? "done" : /^(pending|queued|processing|running|in_progress|started)$/.test(status) ? "pending" : "failed",
     taskId: data.task_id,
     assets: assets.length ? assets : undefined,
     error: data.error?.message ?? json?.error?.message,

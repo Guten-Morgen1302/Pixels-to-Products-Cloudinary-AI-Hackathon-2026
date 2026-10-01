@@ -39,7 +39,7 @@ Upload one phone photo. Cloudinary cuts out your **real** product, places it on 
 - **Cloudinary Node SDK v2**, plus the **Image Generation API** (`/v2/generate`)
 - **sharp** for three small server checks: cutout coverage, Pixel-Lock core erosion, alignment and the Amazon white check
 - **JSZip** for the client-side "Download all"
-- **Vitest**: 52 tests. The network is blocked in tests, so no test can spend credits.
+- **Vitest**: 64 tests. The network is blocked in tests, so no test can spend credits.
 - Fonts: Bricolage Grotesque, Instrument Sans, JetBrains Mono (`next/font`, OFL)
 
 ## 5. Cloudinary integration (feature map)
@@ -113,7 +113,7 @@ npm run dev                     # http://localhost:3000  (GEN_MODE=mock → live
 
 ## 7. How to test
 ```bash
-npm test          # 52 unit/service tests (network blocked; credit-spending calls impossible)
+npm test          # 64 unit/service tests (network blocked; credit-spending calls impossible)
 npm run typecheck
 npm run smoke     # real-account pipeline: sample → composite → 4 kit downloads → Amazon 2000² white (0 AI credits)
 npm run bakeoff   # relight calibration on 3 samples (≤ 3 AI credits, guarded)

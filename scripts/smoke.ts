@@ -23,7 +23,7 @@ const check = (name: string, ok: boolean, detail = "") => {
   check("library stages exist", stages.length > 0, `${stages.length} (${source})`);
   if (!samples.length || !stages.length) process.exit(1);
 
-  const cut = await makeCutout(port, SID, samples[0].publicId);
+  const cut = await makeCutout(port, SID, samples[0].publicId, "smoke");
   check("sample cutout ready (no cutout budget)", cut.cut.w > 0, `${cut.cut.w}×${cut.cut.h}`);
   const preview = await port.fetchBuffer(compositePreviewUrl(port.cloud, stages[0], cut.cut));
   check("composite preview renders", preview.status === 200, `HTTP ${preview.status} ${preview.error ?? ""}`);
