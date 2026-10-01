@@ -100,7 +100,8 @@ export async function sessionStages(port: CloudPort, sessionId: string): Promise
 // Server-side source of truth for a stage: never trust client-sent size or geometry. A session may use library
 // stages and its own generated stages only.
 export async function resolveStage(port: CloudPort, sessionId: string, publicId: unknown): Promise<StageInfo | null> {
-  if (typeof publicId !== "string" || !publicId.startsWith("realstage/")) return null;
+  // Ownership comes from server-set tags, not the ID: generated assets get Cloudinary-assigned IDs (no realstage/ prefix).
+  if (typeof publicId !== "string" || !/^[A-Za-z0-9_/-]{1,200}$/.test(publicId)) return null;
   const a = await port.getResource(publicId);
   if (!a) return null;
   const allowed = a.tags.includes("lib") || (a.tags.includes("stage") && a.tags.includes(`session-${sessionId}`));

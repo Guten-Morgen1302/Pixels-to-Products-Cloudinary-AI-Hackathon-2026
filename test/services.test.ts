@@ -248,3 +248,17 @@ describe("review fixes (regressions)", () => {
     await expect(makeCore(gray)).resolves.toBeInstanceOf(Buffer);
   });
 });
+
+// Regression: live generate returned Cloudinary-assigned IDs without the realstage/ prefix (found 2026-10-01 pre-demo)
+describe("resolveStage with Cloudinary-assigned generated IDs", () => {
+  it("accepts this session's generated stage regardless of ID prefix, rejects other sessions", async () => {
+    const { resolveStage } = await import("@/lib/services/stages");
+    const ctx = { rs_name: "Brass", rs_model: "flux-2-klein-9b", rs_seed: "7", rs_ax: "0.5", rs_fy: "0.8", rs_mw: "0.5", rs_mh: "0.6" };
+    const mine = asset("ki2rt3ylanyfswzs6jea", { tags: ["stage", `session-${SID}`], context: ctx });
+    const theirs = asset("zzzzzzzzzzzzzzzzzzzz", { tags: ["stage", `session-${"c".repeat(24)}`], context: ctx });
+    const c = fakeCloud([mine, theirs]);
+    expect((await resolveStage(c, SID, mine.publicId))?.name).toBe("Brass");
+    expect(await resolveStage(c, SID, theirs.publicId)).toBeNull();
+    expect(await resolveStage(c, SID, "../../etc")).toBeNull();
+  });
+});
