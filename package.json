@@ -1,0 +1,39 @@
+{
+  "name": "realstage",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Your real product on AI-generated stages, sized for every marketplace. Built on Cloudinary.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "check:free": "node scripts/free-tier-checks.mjs",
+    "setup": "tsx scripts/setup.ts",
+    "setup:generate": "tsx scripts/setup.ts --generate",
+    "bakeoff": "tsx scripts/bakeoff.ts",
+    "smoke": "tsx scripts/smoke.ts",
+    "cleanup": "tsx scripts/cleanup.ts"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "cloudinary": "^2.11.0",
+    "jszip": "^3.10.2",
+    "next": "^16.3.8",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "sharp": "^0.35.5"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.3",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.3"
+  }
+}
