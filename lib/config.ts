@@ -11,6 +11,8 @@ export type Config = {
   cronSecret: string;
 };
 
+const flag = (v: string | undefined) => (v ?? "").trim().toLowerCase();
+
 export function getConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const url = env.CLOUDINARY_URL ?? "";
   const m = url.match(/^cloudinary:\/\/([^:]+):([^@]+)@(.+)$/);
@@ -23,9 +25,10 @@ export function getConfig(env: NodeJS.ProcessEnv = process.env): Config {
     cloud,
     apiKey,
     apiSecret,
-    genMode: env.GEN_MODE === "live" ? "live" : "mock",
-    liveAi: env.LIVE_AI === "on",
-    liveUploads: env.LIVE_UPLOADS !== "off",
+    // Dashboard-pasted values can carry stray spaces or capitals; anything other than "live" still means mock.
+    genMode: flag(env.GEN_MODE) === "live" ? "live" : "mock",
+    liveAi: flag(env.LIVE_AI) === "on",
+    liveUploads: flag(env.LIVE_UPLOADS) !== "off",
     sessionSecret: env.SESSION_SECRET || "",
     cronSecret: env.CRON_SECRET || "",
   };
