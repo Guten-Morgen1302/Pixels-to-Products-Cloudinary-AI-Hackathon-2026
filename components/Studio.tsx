@@ -14,7 +14,7 @@ import { api, ApiError, poll, sleep, uploadToCloudinary } from "./api";
 import ExportKit, { type KitState } from "./ExportKit";
 import Landing, { type Sample } from "./Landing";
 import type { StageInfo } from "@/lib/services/stages";
-import { comparePair, compositePreviewUrl, deliveryUrl, slugify, type CutRef, type KitFile } from "@/lib/urls";
+import { comparePair, compositePreviewUrl, deliveryUrl, productLabel, slugify, type CutRef, type KitFile } from "@/lib/urls";
 import { BUDGET, DEFAULT_GEN_OPTION, EDIT_MODEL, GEN_OPTIONS } from "@/lib/models";
 
 type Ai = { on: boolean; creditsLeft: number; reason?: string; mock: boolean };
@@ -456,7 +456,7 @@ export default function Studio() {
               <div className="well"><img src={deliveryUrl(cloud, product.originalId, ["c_fill,w_112,h_112", "f_auto,q_auto"])} alt="Original photo" /></div>
               <div className="well"><img src={deliveryUrl(cloud, product.cut.publicId, ["c_pad,w_112,h_112,b_rgb:F5F6F8", "f_auto,q_auto"])} alt="Cutout" /></div>
               <div>
-                <b style={{ fontSize: 14, display: "block", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{product.name}</b>
+                <b style={{ fontSize: 14, display: "block", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{productLabel(product.name)}</b>
                 <button className="link" onClick={newPhoto}>New photo</button>
               </div>
             </div>

@@ -14,18 +14,6 @@
 **Priority:** P3
 **Depends on:** Kit export tagging
 
-### Hide the file extension in the product name
-
-**What:** Show "qa-real-photo" instead of "qa-real-photo.jpg" under "Your product" in the studio.
-
-**Why:** Cosmetic. Raw filenames look unpolished in the demo; the kit file names already strip the extension.
-
-**Context:** Found by /qa on 2026-10-01 (ISSUE-002, low/ux). The name is set in `components/Studio.tsx` `onFile` (`file.name`). Strip `/\.[a-z0-9]+$/i` for display only; keep `productName` as-is for the server.
-
-**Effort:** S (human) / S (CC)
-**Priority:** P3
-**Depends on:** None
-
 ## Infrastructure
 
 ### Per-session caps
@@ -59,3 +47,17 @@ Pulled back into v1 scope by the Outside Voice Round (X7, 2026-10-01): the daily
 
 ### Replace tag-count caps with an atomic counter
 Superseded by the Outside Voice Round (X3, 2026-10-01): Cloudinary create-if-absent slot claims are atomic and free; no KV needed.
+
+### Hide the file extension in the product name
+
+**What:** Show "qa-real-photo" instead of "qa-real-photo.jpg" under "Your product" in the studio.
+
+**Why:** Cosmetic. Raw filenames look unpolished in the demo; the kit file names already strip the extension.
+
+**Context:** Found by /qa on 2026-10-01 (ISSUE-002, low/ux). The name is set in `components/Studio.tsx` `onFile` (`file.name`). Strip `/\.[a-z0-9]+$/i` for display only; keep `productName` as-is for the server.
+
+**Effort:** S (human) / S (CC)
+**Priority:** P3
+**Depends on:** None
+
+Fixed by /qa on main, 2026-10-01 (productLabel helper + regression test).

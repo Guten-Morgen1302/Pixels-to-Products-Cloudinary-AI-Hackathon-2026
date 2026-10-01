@@ -65,3 +65,17 @@ describe("kit", () => {
     expect(slugify("!!!")).toBe("product");
   });
 });
+
+// Regression: ISSUE-002 — studio showed "qa-real-photo.jpg" as the product name
+// Found by /qa on 2026-10-01
+// Report: .gstack/qa-reports/run-20261001T134854Z/qa-report-localhost-2026-10-01.md
+describe("productLabel (ISSUE-002)", () => {
+  it("drops the file extension for display, keeps everything else", async () => {
+    const { productLabel } = await import("@/lib/urls");
+    expect(productLabel("qa-real-photo.jpg")).toBe("qa-real-photo");
+    expect(productLabel("IMG_2041.HEIC")).toBe("IMG_2041");
+    expect(productLabel("Leather bag")).toBe("Leather bag"); // sample names have no extension
+    expect(productLabel("my.steel.tumbler.png")).toBe("my.steel.tumbler");
+    expect(productLabel(".jpg")).toBe(".jpg"); // never blank
+  });
+});

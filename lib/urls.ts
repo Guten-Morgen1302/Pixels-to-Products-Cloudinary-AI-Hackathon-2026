@@ -74,6 +74,12 @@ export function comparePair(cloud: string, stage: StageRef, cut: CutRef, relitFi
 
 export type KitFile = { key: "amazon" | "instagram" | "story" | "whatsapp"; label: string; size: string; social: boolean; download: string; preview: string };
 
+// Display name for the product: the upload's filename without its extension (never blank).
+export function productLabel(name: string): string {
+  const label = name.replace(/\.[a-z0-9]{2,5}$/i, "");
+  return label || name;
+}
+
 export function slugify(name: string): string {
   const s = name.toLowerCase().replace(/\.[a-z0-9]+$/, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40);
   return s || "product";
