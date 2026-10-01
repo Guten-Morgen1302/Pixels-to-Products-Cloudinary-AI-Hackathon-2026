@@ -7,7 +7,7 @@ Upload one phone photo. Cloudinary cuts out your **real** product, places it on 
 > Built for **Pixels to Products: Cloudinary AI Hackathon 2026** (HackIndia) · **Track 2: Generative Content Workflows**
 > Runs entirely on Cloudinary's **free tier**: 50 image-generation credits, $0.
 
-- **Live demo:** `https://<your-vercel-url>` (set after deploy)
+- **Live demo:** https://realstage-nine.vercel.app (live AI on, capped at 15 credits; library stages and the kit work even after the cap)
 - **Demo video:** https://youtu.be/QtBXTceT8sI (2:04, made in Remotion from the real live run: [video/](video/README.md))
 - **Planning and reviews:** [docs/README.md](docs/README.md)
 
