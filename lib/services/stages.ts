@@ -1,6 +1,6 @@
 import type { Asset, CloudPort } from "../cloud";
 import { isValidGeometry, type Geometry } from "../geometry";
-import { DEFAULT_GEOMETRY } from "../models";
+import { DEFAULT_GEOMETRY, SCENES, STAGE_MODELS } from "../models";
 import snapshot from "../stages.snapshot.json";
 
 export type StageInfo = {
@@ -50,6 +50,19 @@ export function toStage(a: Asset, library: boolean): StageInfo | null {
   };
 }
 
+// Showcase order: scenes in art-direction order, models in table order, so the first strip is one scene on 3 models
+// (Track 2: model choice side by side). Library IDs are realstage/lib/<scene>-<family>.
+function rank(s: StageInfo): [number, number] {
+  const [scene, ...fam] = s.publicId.split("/").pop()!.split("-");
+  const si = SCENES.findIndex((x) => x.key === scene);
+  const mi = STAGE_MODELS.findIndex((m) => m.family === fam.join("-"));
+  return [si < 0 ? 99 : si, mi < 0 ? 99 : mi];
+}
+export function byShowcase(a: StageInfo, b: StageInfo): number {
+  const [as, am] = rank(a), [bs, bm] = rank(b);
+  return as - bs || am - bm || a.publicId.localeCompare(b.publicId);
+}
+
 let libCache: { at: number; stages: StageInfo[] } | null = null;
 
 // Library stages from Cloudinary (tag `lib`), cached 60 s; on any Admin API error fall back to the bundled snapshot
@@ -58,7 +71,7 @@ export async function libraryStages(port: CloudPort): Promise<{ stages: StageInf
   if (libCache && Date.now() - libCache.at < 60_000) return { stages: libCache.stages, source: "live" };
   try {
     const assets = await port.listTag("lib");
-    const stages = assets.map((a) => toStage(a, true)).filter((s): s is StageInfo => !!s).sort((a, b) => a.publicId.localeCompare(b.publicId));
+    const stages = assets.map((a) => toStage(a, true)).filter((s): s is StageInfo => !!s).sort(byShowcase);
     if (!stages.length) return { stages: snapshot as StageInfo[], source: "snapshot" };
     libCache = { at: Date.now(), stages };
     return { stages, source: "live" };

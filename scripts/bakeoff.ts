@@ -41,7 +41,7 @@ const LIMIT = Number(process.env.BAKEOFF_SAMPLES ?? 3);
     let out: any = { status: "pending" };
     while (out.status === "pending" && Date.now() - t0 < 120_000) {
       await new Promise((r) => setTimeout(r, 3000));
-      out = await pollRelight(port, cfg, SID, start.taskId, start.compositeId, input).catch((e) => ({ status: "error", error: e.message }));
+      out = await pollRelight(port, cfg, SID, start.taskId, start.compositeId, input, "build").catch((e) => ({ status: "error", error: e.message }));
     }
     const secs = Math.round((Date.now() - t0) / 1000);
     let shifted = "—";

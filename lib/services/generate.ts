@@ -140,7 +140,7 @@ export async function startRelight(port: CloudPort, cfg: Config, sessionId: stri
 
 export type RelightOutcome = { status: "pending" } | { status: "done"; finalId: string; alignment: number | null; fallback: boolean };
 
-export async function pollRelight(port: CloudPort, cfg: Config, sessionId: string, taskId: string, compositeId: string, rawInput: RelightInput): Promise<RelightOutcome> {
+export async function pollRelight(port: CloudPort, cfg: Config, sessionId: string, taskId: string, compositeId: string, rawInput: RelightInput, pool: "prod" | "build" = "prod"): Promise<RelightOutcome> {
   const input = await resolveRelightInput(port, sessionId, rawInput);
   if (!ownsAsset(sessionId, compositeId)) throw new AppError("FORBIDDEN", MESSAGES.FORBIDDEN, 403);
   let relitId: string;
@@ -155,7 +155,7 @@ export async function pollRelight(port: CloudPort, cfg: Config, sessionId: strin
     await recordQuota(port, res.quotaRemaining);
     if (res.status === "pending") return { status: "pending" };
     if (res.status === "failed" || !res.assets?.length) throw genError(res);
-    await settleCost(port, res.usedByRequest, EDIT_MODEL.credits);
+    if (pool === "prod") await settleCost(port, res.usedByRequest, EDIT_MODEL.credits); // build spend never touches the judge pool
     relitId = res.assets[0].publicId;
     relitSize = { w: res.assets[0].width, h: res.assets[0].height };
     await port.update(relitId, { tags: ["realstage", `session-${sessionId}`, expTag()] }).catch(() => undefined);

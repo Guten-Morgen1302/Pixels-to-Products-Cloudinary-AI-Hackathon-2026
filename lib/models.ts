@@ -19,7 +19,7 @@ export const GEN_OPTIONS: GenOption[] = STAGE_MODELS.map((m) => {
 });
 export const DEFAULT_GEN_OPTION = GEN_OPTIONS[0].modelId;
 
-export const EDIT_MODEL = { id: "flux-2-klein-9b-edit", seed: true, credits: 1 };
+export const EDIT_MODEL = { id: "flux-2-klein-9b-edit", seed: true, credits: 3 }; // verified 2026-10-01 (bake-off)
 export const EDIT_MODEL_FALLBACK = { id: "nano-banana-1-edit", seed: true, credits: 1 };
 
 export const BUDGET = {

@@ -1,20 +1,5 @@
 [
   {
-    "publicId": "realstage/lib/brass-flux",
-    "w": 1024,
-    "h": 1024,
-    "geometry": {
-      "anchorX": 0.5,
-      "floorY": 0.8,
-      "maxW": 0.5,
-      "maxH": 0.6
-    },
-    "name": "Festive brass",
-    "model": "flux-2-klein-9b",
-    "seed": 1030,
-    "library": true
-  },
-  {
     "publicId": "realstage/lib/kota-flux",
     "w": 1024,
     "h": 1024,
@@ -60,36 +45,6 @@
     "library": true
   },
   {
-    "publicId": "realstage/lib/marble-flux",
-    "w": 1024,
-    "h": 1024,
-    "geometry": {
-      "anchorX": 0.5,
-      "floorY": 0.8,
-      "maxW": 0.5,
-      "maxH": 0.6
-    },
-    "name": "Marble counter",
-    "model": "flux-2-klein-9b",
-    "seed": 1050,
-    "library": true
-  },
-  {
-    "publicId": "realstage/lib/monsoon-flux",
-    "w": 1024,
-    "h": 1024,
-    "geometry": {
-      "anchorX": 0.5,
-      "floorY": 0.8,
-      "maxW": 0.5,
-      "maxH": 0.6
-    },
-    "name": "Monsoon sill",
-    "model": "flux-2-klein-9b",
-    "seed": 1040,
-    "library": true
-  },
-  {
     "publicId": "realstage/lib/teak-flux",
     "w": 1024,
     "h": 1024,
@@ -117,6 +72,51 @@
     "name": "Terracotta",
     "model": "flux-2-klein-9b",
     "seed": 1020,
+    "library": true
+  },
+  {
+    "publicId": "realstage/lib/brass-flux",
+    "w": 1024,
+    "h": 1024,
+    "geometry": {
+      "anchorX": 0.5,
+      "floorY": 0.8,
+      "maxW": 0.5,
+      "maxH": 0.6
+    },
+    "name": "Festive brass",
+    "model": "flux-2-klein-9b",
+    "seed": 1030,
+    "library": true
+  },
+  {
+    "publicId": "realstage/lib/monsoon-flux",
+    "w": 1024,
+    "h": 1024,
+    "geometry": {
+      "anchorX": 0.5,
+      "floorY": 0.8,
+      "maxW": 0.5,
+      "maxH": 0.6
+    },
+    "name": "Monsoon sill",
+    "model": "flux-2-klein-9b",
+    "seed": 1040,
+    "library": true
+  },
+  {
+    "publicId": "realstage/lib/marble-flux",
+    "w": 1024,
+    "h": 1024,
+    "geometry": {
+      "anchorX": 0.5,
+      "floorY": 0.8,
+      "maxW": 0.5,
+      "maxH": 0.6
+    },
+    "name": "Marble counter",
+    "model": "flux-2-klein-9b",
+    "seed": 1050,
     "library": true
   }
 ]
