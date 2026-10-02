@@ -24,6 +24,7 @@ Upload one product photo. Cloudinary cuts out your **real** product, places it o
 
 > Built for **Pixels to Products: Cloudinary AI Hackathon 2026** (HackIndia) · **Track 2: Generative Content Workflows**
 > Runs entirely on Cloudinary's **free tier**: 50 image-generation credits, $0.
+> Team **ConsoleLog** · [hackindia-team:pixels-to-products-cloudinary-ai-hackathon-2026:consolelog]
 
 **Links:** [Live demo](https://realstage-nine.vercel.app) (live AI on, capped at 15 credits; library stages and the kit keep working after the cap) · [Demo video](https://youtu.be/QtBXTceT8sI) (made in Remotion from the real live run, see [video/](video/README.md)) · [Planning and reviews](docs/README.md)
 
